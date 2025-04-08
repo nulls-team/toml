@@ -1,0 +1,9 @@
+str1 = """
+Roses are red
+Violets are blue"""
+
+str2 = """\
+  The quick brown \
+  fox jumps over \
+  the lazy dog.\
+  """

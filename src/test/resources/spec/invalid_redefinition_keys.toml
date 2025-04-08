@@ -1,0 +1,7 @@
+# DO NOT DO THIS
+name = "Tom"
+name = "Pradyun"
+
+# THIS WILL NOT WORK
+spelling = "favorite"
+"spelling" = "favourite"

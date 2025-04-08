@@ -1,0 +1,15 @@
+[multi.line]
+basic = """Test basic
+
+newline oops"""
+escaped = """Test basic \
+
+
+without newline"""
+literal = '''
+no escapes allowed
+'''
+literal.broken = '''
+no escapes \
+allowed
+'''

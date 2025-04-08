@@ -1,0 +1,3 @@
+test = { value = """multiline
+string
+within the inline table""" }

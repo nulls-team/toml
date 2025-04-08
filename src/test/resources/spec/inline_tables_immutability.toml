@@ -1,0 +1,8 @@
+[product]
+type = { name = "Nail" }
+# type.edible = false  # INVALID
+
+# Note: example below is just a table redifinition
+#[product]
+#type.name = "Nail"
+## type = { edible = false }  # INVALID
