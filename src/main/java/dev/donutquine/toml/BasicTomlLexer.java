@@ -187,6 +187,8 @@ public class BasicTomlLexer implements TomlLexer {
             readUntil(buffer, ESCAPE_CHAR);
             lastChar = buffer.charAt(buffer.length() - 1);
         }
+
+        readChar();
     }
 
     private void readUntil(StringBuilder buffer, char until) {

@@ -3,14 +3,17 @@ package dev.donutquine.toml;
 import dev.donutquine.toml.exceptions.TomlException;
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.*;
 import java.util.function.Function;
 
 public class TomlParser {
     private static final Function<String, TomlLexer> DEFAULT_LEXER = BasicTomlLexer::new;
 
     private final TomlLexer lexer;
+
     private Iterator<TomlToken> iterator;
+
+    private TomlToken unhandledToken;
 
     public TomlParser(String toml) {
         this(DEFAULT_LEXER.apply(toml));
@@ -28,10 +31,10 @@ public class TomlParser {
         while (iterator.hasNext()) {
             TomlToken token = iterator.next();
 
-            if (isKey(token.getType())) {
+            if (isTable(token.getType())) {
+                parseTableDeclaration(toml);
+            } else if (isKey(token.getType())) {
                 parseKeyValuePair(toml, token);
-            } else if (isTable(token.getType())) {
-
             } else if (token.getType() != TomlTokenType.COMMENT && token.getType() != TomlTokenType.NEWLINE) {
                 throw new IllegalStateException("Unexpected token type: " + token.getType());
             }
@@ -41,33 +44,73 @@ public class TomlParser {
     }
 
     private void parseKeyValuePair(Toml toml, TomlToken token) {
+        List<String> keyPath = new ArrayList<>(tryParseKey());
+        keyPath.add(0, token.getValue());
+
+        String key = keyPath.remove(keyPath.size() - 1);
+
         TomlTable table = toml.getCurrentTable();
+        for (String tableKey : keyPath) {
+            table = table.computeIfAbsent(tableKey, (k) -> new BasicTomlTable());
+        }
 
-        String key = token.getValue();
+        TomlToken equalsToken = unhandledToken;
+        if (equalsToken.getType() == TomlTokenType.EQUALS) {
+            Object value = parseValue();
+            if (value != null) {
+                table.setObject(key, value);
+            }
+
+            return;
+        }
+
+        throw new IllegalStateException("Unexpected token received " + equalsToken);
+    }
+
+    private void parseTableDeclaration(Toml toml) {
+        List<String> keyPath = tryParseKey();
+        if (keyPath.isEmpty()) {
+            throw new IllegalStateException("Key path was expected, but not found");
+        }
+
+        if (unhandledToken.getType() != TomlTokenType.RIGHT_BRACKET) {
+            throw new IllegalStateException("Unexpected token: " + unhandledToken);
+        }
+
+        toml.setTable(keyPath.toArray(String[]::new));
+    }
+
+    private List<String> tryParseKey() {
+        List<String> keys = new ArrayList<>();
+
         while (iterator.hasNext()) {
-            TomlToken dotToken = iterator.next();
-            switch (dotToken.getType()) {
-                // Dotted key
-                case DOT:
-                    if (iterator.hasNext()) {
-                        TomlToken keyToken = iterator.next();
-                        if (!isKey(keyToken.getType())) {
-                            throw new IllegalStateException("Key token was expected, but received " + keyToken);
-                        }
+            TomlToken keyToken = iterator.next();
 
-                        table = table.getTable(key);
-                        key = keyToken.getValue();
-                    }
-                    break;
-                case EQUALS:
-                    Object value = parseValue();
-                    if (value != null) {
-                        table.setObject(key, value);
+            // Dotted key
+            if (keyToken.getType() == TomlTokenType.DOT) {
+                if (iterator.hasNext()) {
+                    keyToken = iterator.next();
+                    if (!isKey(keyToken.getType())) {
+                        throw new IllegalStateException("Key token was expected, but received " + keyToken);
                     }
 
-                    return;
+                    keys.add(keyToken.getValue());
+                } else {
+                    throw new IllegalStateException("Key token was expected, but received nothing");
+                }
+            } else if (isKey(keyToken.getType())) {
+                if (keys.isEmpty()) {
+                    keys.add(keyToken.getValue());
+                } else {
+                    throw new IllegalStateException("Key token wasn't expected, but received " + keyToken);
+                }
+            } else {
+                this.unhandledToken = keyToken;
+                break;
             }
         }
+
+        return keys;
     }
 
     private Object parseValue() {
