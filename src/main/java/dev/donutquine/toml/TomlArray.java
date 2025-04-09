@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // TODO: maybe usage of generic ValueAccessor will be better (like ValueAccessor<Integer>)
-public class TomlArray implements ArrayValueAccessor {
+public class TomlArray implements ArrayValueAccessor, ArrayValueMutator {
     private final List<Object> values = new ArrayList<>();
 
     @Override
@@ -40,5 +40,40 @@ public class TomlArray implements ArrayValueAccessor {
     @Override
     public TomlTable getTable(int key) {
         return (TomlTable) values.get(key);
+    }
+
+    @Override
+    public void addString(String value) {
+        values.add(value);
+    }
+
+    @Override
+    public void addInteger(int value) {
+        values.add(value);
+    }
+
+    @Override
+    public void addLong(long value) {
+        values.add(value);
+    }
+
+    @Override
+    public void addFloat(float value) {
+        values.add(value);
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+        values.add(value);
+    }
+
+    @Override
+    public void addArray(TomlArray value) {
+        values.add(value);
+    }
+
+    @Override
+    public void addTable(TomlTable value) {
+        values.add(value);
     }
 }

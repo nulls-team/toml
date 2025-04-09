@@ -5,12 +5,16 @@ public class Toml {
 
     private TomlTable currentTable = rootTable;
 
-    public void setTable(String... tableName) {
+    public void setCurrentTableByPath(String... tableName) {
         TomlTable table = rootTable;
         for (String key : tableName) {
             table = table.computeIfAbsent(key, (k) -> new BasicTomlTable());
         }
 
+        this.currentTable = table;
+    }
+
+    public void setCurrentTable(TomlTable table) {
         this.currentTable = table;
     }
 

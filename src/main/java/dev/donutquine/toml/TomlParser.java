@@ -43,9 +43,8 @@ public class TomlParser {
         return toml;
     }
 
-    private void parseKeyValuePair(Toml toml, TomlToken token) {
-        List<String> keyPath = new ArrayList<>(tryParseKey());
-        keyPath.add(0, token.getValue());
+    private void parseKeyValuePair(Toml toml, TomlToken keyToken) {
+        List<String> keyPath = new ArrayList<>(tryParseKey(keyToken));
 
         String key = keyPath.remove(keyPath.size() - 1);
 
@@ -68,7 +67,25 @@ public class TomlParser {
     }
 
     private void parseTableDeclaration(Toml toml) {
-        List<String> keyPath = tryParseKey();
+        if (!iterator.hasNext()) {
+            throw new IllegalStateException("Unexpected end of file");
+        }
+
+        boolean isArray = false;
+
+        TomlToken token = iterator.next();
+
+        if (token.getType() == TomlTokenType.LEFT_BRACKET) {
+            isArray = true;
+
+            if (iterator.hasNext()) {
+                token = iterator.next();
+            } else {
+                throw new IllegalStateException("Unexpected end of file");
+            }
+        }
+
+        List<String> keyPath = new ArrayList<>(tryParseKey(token));
         if (keyPath.isEmpty()) {
             throw new IllegalStateException("Key path was expected, but not found");
         }
@@ -77,15 +94,41 @@ public class TomlParser {
             throw new IllegalStateException("Unexpected token: " + unhandledToken);
         }
 
-        toml.setTable(keyPath.toArray(String[]::new));
+        if (isArray) {
+            if (!iterator.hasNext()) {
+                throw new IllegalStateException("Unexpected end of file");
+            }
+
+            token = iterator.next();
+
+            if (token.getType() != TomlTokenType.RIGHT_BRACKET) {
+                throw new IllegalStateException("Unexpected token: " + unhandledToken);
+            }
+
+            String arrayKey = keyPath.remove(keyPath.size() - 1);
+
+            TomlTable table = toml.getCurrentTable();
+            for (String tableKey : keyPath) {
+                table = table.computeIfAbsent(tableKey, (k) -> new BasicTomlTable());
+            }
+
+            TomlArray array = table.computeIfAbsent(arrayKey, (k) -> new TomlArray());
+            if (array != null) {
+                table = new BasicTomlTable();
+                array.addTable(table);
+                toml.setCurrentTable(table);
+            } else {
+                throw new IllegalStateException("Array not found");
+            }
+        } else {
+            toml.setCurrentTableByPath(keyPath.toArray(String[]::new));
+        }
     }
 
-    private List<String> tryParseKey() {
+    private List<String> tryParseKey(TomlToken keyToken) {
         List<String> keys = new ArrayList<>();
 
-        while (iterator.hasNext()) {
-            TomlToken keyToken = iterator.next();
-
+        while (true) {
             // Dotted key
             if (keyToken.getType() == TomlTokenType.DOT) {
                 if (iterator.hasNext()) {
@@ -106,6 +149,12 @@ public class TomlParser {
                 }
             } else {
                 this.unhandledToken = keyToken;
+                break;
+            }
+
+            if (iterator.hasNext()) {
+                keyToken = iterator.next();
+            } else {
                 break;
             }
         }
