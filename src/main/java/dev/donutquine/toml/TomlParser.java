@@ -1,11 +1,13 @@
 package dev.donutquine.toml;
 
+import dev.donutquine.toml.exceptions.TomlException;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.function.Function;
 
 public class TomlParser {
-    private static final Function<StringReader, TomlLexer> DEFAULT_LEXER = LazyTomlLexer::new;
+    private static final Function<StringReader, TomlLexer> DEFAULT_LEXER = BasicTomlLexer::new;
 
     private final TomlLexer lexer;
 
@@ -21,7 +23,7 @@ public class TomlParser {
         this.lexer = lexer;
     }
 
-    public Toml parse() throws IOException {
+    public Toml parse() throws IOException, TomlException {
         Toml toml = new Toml();
 
         Iterable<TomlToken> tokens = lexer.tokenize();

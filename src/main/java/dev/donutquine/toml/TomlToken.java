@@ -2,15 +2,13 @@ package dev.donutquine.toml;
 
 public final class TomlToken {
     private final TomlTokenType type;
-    private final int line, column;
-    private final int length;
+    private final Location start, end;
     private final String value;
 
-    public TomlToken(TomlTokenType type, int line, int column, int length, String value) {
+    public TomlToken(TomlTokenType type, Location start, Location end, String value) {
         this.type = type;
-        this.line = line;
-        this.column = column;
-        this.length = length;
+        this.start = start;
+        this.end = end;
         this.value = value;
     }
 
@@ -18,16 +16,12 @@ public final class TomlToken {
         return type;
     }
 
-    public int getLine() {
-        return line;
+    public Location getStart() {
+        return start;
     }
 
-    public int getColumn() {
-        return column;
-    }
-
-    public int getLength() {
-        return length;
+    public Location getEnd() {
+        return end;
     }
 
     public String getValue() {
@@ -36,6 +30,6 @@ public final class TomlToken {
 
     @Override
     public String toString() {
-        return String.format("TomlToken{type=%s, value='%s', %d:%d (%d)}", type, value, line, column, length);
+        return String.format("TomlToken{type=%s, value='%s', %s - %s}", type, value, start, end);
     }
 }
