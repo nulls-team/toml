@@ -20,4 +20,6 @@ public interface ValueAccessor {
     TomlArray getArray(String key);
 
     TomlTable getTable(String key);
+
+    <T> T getAs(String key, Class<T> type);
 }

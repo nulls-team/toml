@@ -2,9 +2,8 @@ package dev.donutquine.toml;
 
 import dev.donutquine.toml.exceptions.ForbiddenCharInLiteralString;
 import dev.donutquine.toml.exceptions.TomlException;
+import dev.donutquine.toml.exceptions.UnknownLexemeException;
 
-import java.io.IOException;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -19,20 +18,26 @@ public class BasicTomlLexer implements TomlLexer {
     private static final char LITERAL_STRING_END = '\'';
     private static final char ESCAPE_CHAR = '\\';
     private static final char NEWLINE_CHAR = '\n';
+    private static final char LEFT_BRACKET = '[';
+    private static final char RIGHT_BRACKET = ']';
+    private static final char EQUALS = '=';
+    private static final char COMMA = ',';
+    private static final char DOT = '.';
+    public static final char PLUS_SIGN = '+';
+    public static final char MINUS_SIGN = '-';
+    public static final char UNDERSCORE = '_';
 
-    private final StringReader reader;
-
-    private StringBuilder lineBuilder = new StringBuilder();
+    private final String string;
 
     private int position;
-    private int line, column = 1;
+    private int line, column;
 
-    public BasicTomlLexer(StringReader tomlReader) {
-        this.reader = tomlReader;
+    public BasicTomlLexer(String toml) {
+        this.string = toml;
     }
 
     @Override
-    public Iterable<TomlToken> tokenize() throws TomlException, IOException {
+    public Iterable<TomlToken> tokenize() throws TomlException {
         List<TomlToken> tokens = new ArrayList<>();
 
         while (true) {
@@ -47,54 +52,107 @@ public class BasicTomlLexer implements TomlLexer {
         return tokens;
     }
 
-    private TomlToken next() throws TomlException, IOException {
-        StringBuilder buffer = new StringBuilder();
+    private TomlToken next() throws TomlException {
+        skipWhitespace();
+
+        if (position >= string.length()) {
+            return null;
+        }
 
         int startLine = line;
         int startColumn = column;
+        int current = peekChar();
 
-        reader.reset();
-
+        StringBuilder buffer = new StringBuilder();
         TomlTokenType tokenType;
 
-        while (true) {
-            int character = readChar();
-            if (character == EOF) {
-                return null;
+        if (current == NEWLINE_CHAR) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.NEWLINE;
+        } else if (current == COMMENT_START_SYMBOL) {
+            buffer.append((char) readChar());
+            readUntil(buffer, NEWLINE_CHAR);
+            tokenType = TomlTokenType.COMMENT;
+        } else if (current == BASIC_STRING_START) {
+            readChar(); // consume "
+            nextBasicString(buffer);
+            tokenType = TomlTokenType.BASIC_STRING;
+        } else if (current == LITERAL_STRING_START) {
+            readChar(); // consume '
+            nextLiteralString(buffer);
+            tokenType = TomlTokenType.LITERAL_STRING;
+        } else if (current == PLUS_SIGN || current == MINUS_SIGN) {
+            buffer.append((char) readChar());
+
+            tokenType = tryReadNumber(buffer);
+
+            if (tokenType == null) {
+                throwException(UnknownLexemeException::new);
             }
-
-            if (character == COMMENT_START_SYMBOL) {
-                buffer.append((char) character);
-
-                readUntil(buffer, NEWLINE_CHAR);
-
-                tokenType = TomlTokenType.COMMENT;
-
-                break;
-            } else if (character == BASIC_STRING_START) {
-                nextBasicString(buffer);
-
-                tokenType = TomlTokenType.BASIC_STRING;
-                break;
-            } else if (character == LITERAL_STRING_START) {
-                nextLiteralString(buffer);
-
-                tokenType = TomlTokenType.LITERAL_STRING;
-                break;
-            }
+        } else if (current == LEFT_BRACKET) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.LEFT_BRACKET;
+        } else if (current == RIGHT_BRACKET) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.RIGHT_BRACKET;
+        } else if (current == EQUALS) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.EQUALS;
+        } else if (current == COMMA) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.COMMA;
+        } else if (current == DOT) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.DOT;
+        } else if (isBareKeyChar(current)) {
+            tokenType = readBareKey(buffer);
+        } else {
+            throwException(UnknownLexemeException::new);
+            return null;
         }
 
-        reader.mark(position);
-
         String value = buffer.toString();
-
         return new TomlToken(tokenType, new Location(startLine, startColumn), new Location(line, column), value);
     }
 
-    private void nextLiteralString(StringBuilder buffer) throws TomlException, IOException {
+    private TomlTokenType tryReadNumber(StringBuilder buffer) {
+        return null;
+    }
+
+    private TomlTokenType readBareKey(StringBuilder buffer) {
+        while (position < string.length()) {
+            int c = peekChar();
+            if (!isBareKeyChar(c)) break;
+            buffer.append((char) readChar());
+        }
+
+        return TomlTokenType.BARE_KEY;
+    }
+
+    private boolean isBareKeyChar(int c) {
+        return Character.isLetterOrDigit(c) || c == MINUS_SIGN || c == UNDERSCORE;
+    }
+
+    private void skipWhitespace() {
+        while (position < string.length()) {
+            int c = peekChar();
+            if (isWhitespace(c)) {
+                readChar();
+            } else {
+                break;
+            }
+        }
+    }
+
+    private boolean isWhitespace(int character) {
+        return character == '\t' || character == ' ';
+    }
+
+    private void nextLiteralString(StringBuilder buffer) throws TomlException {
         while (true) {
-            int character = readChar();
+            int character = peekChar();
             if (character == EOF || character == LITERAL_STRING_END) {
+                readChar();
                 break;
             }
 
@@ -102,7 +160,7 @@ public class BasicTomlLexer implements TomlLexer {
                 throwException(ForbiddenCharInLiteralString::new);
             }
 
-            buffer.append((char) character);
+            buffer.append((char) readChar());
         }
     }
 
@@ -114,20 +172,13 @@ public class BasicTomlLexer implements TomlLexer {
         return (character >= 0x80 && character <= 0xd7ff) || (character >= 0xe000 && character <= 0x10ffff);
     }
 
-    private void throwException(BiFunction<String, Location, TomlException> exceptionFactory) throws TomlException, IOException {
-        int column = this.column;
+    private void throwException(BiFunction<String, Location, TomlException> exceptionFactory) throws TomlException {
+        String line = string.split("\r?\n")[this.line];
 
-        while (true) {
-            int character = readChar();
-            if (character == EOF || character == NEWLINE_CHAR) {
-                break;
-            }
-        }
-
-        throw exceptionFactory.apply(lineBuilder.toString(), new Location(line, column));
+        throw exceptionFactory.apply(line, new Location(this.line, column));
     }
 
-    private void nextBasicString(StringBuilder buffer) throws IOException {
+    private void nextBasicString(StringBuilder buffer) {
         readUntil(buffer, BASIC_STRING_END);
 
         char lastChar = buffer.charAt(buffer.length() - 1);
@@ -138,31 +189,34 @@ public class BasicTomlLexer implements TomlLexer {
         }
     }
 
-    private void readUntil(StringBuilder buffer, char until) throws IOException {
+    private void readUntil(StringBuilder buffer, char until) {
         while (true) {
-            int character = readChar();
+            int character = peekChar();
             if (character == EOF || character == until) {
                 break;
             }
 
-            buffer.append((char) character);
+            buffer.append((char) readChar());
         }
     }
 
-    private int readChar() throws IOException {
-        int character = reader.read();
-        if (character == EOF) {
-            return character;
+    private int peekChar() {
+        if (position >= string.length()) {
+            return EOF;
         }
 
-        lineBuilder.append((char) character);
+        return string.charAt(position);
+    }
 
-        position++;
+    private int readChar() {
+        if (position >= string.length()) {
+            return EOF;
+        }
+
+        char character = string.charAt(position++);
         column++;
 
         if (character == NEWLINE_CHAR) {
-            lineBuilder = new StringBuilder();
-
             line++;
             column = 0;
         }

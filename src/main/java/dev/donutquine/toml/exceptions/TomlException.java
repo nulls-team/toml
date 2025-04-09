@@ -24,16 +24,22 @@ public abstract class TomlException extends Throwable {
         if (detailMessage == null) {
             StringBuilder builder = new StringBuilder();
             builder.append(message);
+
+            builder.append(" Location: ");
+            builder.append(location);
+
             builder.append('\n');
 
-            builder.append(line);
-            builder.append('\n');
+            if (line != null && !line.isEmpty()) {
+                builder.append(line);
+                builder.append('\n');
 
-            char[] pointer = new char[location.getColumn()];
-            Arrays.fill(pointer, 0, pointer.length - 1, ' ');
-            pointer[pointer.length - 1] = '^';
+                char[] pointer = new char[location.getColumn() + 1];
+                Arrays.fill(pointer, 0, pointer.length - 1, ' ');
+                pointer[pointer.length - 1] = '^';
 
-            builder.append(pointer);
+                builder.append(pointer);
+            }
 
             detailMessage = builder.toString();
         }

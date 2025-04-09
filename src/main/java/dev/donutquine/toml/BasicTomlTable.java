@@ -45,8 +45,59 @@ public class BasicTomlTable implements TomlTable {
     }
 
     @Override
+    public <T> T getAs(String key, Class<T> type) {
+        Object value = values.get(key);
+        if (type.isInstance(value)) {
+            //noinspection unchecked
+            return (T) value;
+        }
+
+        return null;
+    }
+
+    @Override
     public <T> T computeIfAbsent(String key, Function<String, T> valueFunction) {
         //noinspection unchecked
         return (T) values.computeIfAbsent(key, valueFunction);
+    }
+
+    @Override
+    public void setString(String key, String value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setInteger(String key, int value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setLong(String key, long value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setFloat(String key, float value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setBoolean(String key, boolean value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setArray(String key, TomlArray value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setTable(String key, TomlTable value) {
+        values.put(key, value);
+    }
+
+    @Override
+    public void setObject(String key, Object value) {
+        values.put(key, value);
     }
 }
