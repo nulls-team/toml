@@ -126,6 +126,9 @@ public class BasicTomlLexer implements TomlLexer {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_END;
             valueRequired = false;
+        } else if (current == BRACE_END) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.BRACE_END;
         } else if (current == BASIC_STRING_QUOTE) {
             nextBasicString(buffer);
             tokenType = TomlTokenType.BASIC_STRING;
@@ -137,9 +140,6 @@ public class BasicTomlLexer implements TomlLexer {
             if (current == BRACE_START) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_START;
-            } else if (current == BRACE_END) {
-                buffer.append((char) readChar());
-                tokenType = TomlTokenType.BRACE_END;
             } else {
                 LexemeRegexMatchResult matchResult = nextRegexMatch(
                     new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),

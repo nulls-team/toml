@@ -34,7 +34,7 @@ public class TomlParser {
             if (isTable(token.getType())) {
                 parseTableDeclaration(toml);
             } else if (isKey(token.getType())) {
-                parseKeyValuePair(toml, token);
+                parseKeyValuePair(toml.getCurrentTable(), token);
             } else if (token.getType() != TomlTokenType.COMMENT && token.getType() != TomlTokenType.NEWLINE) {
                 throw new IllegalStateException("Unexpected token type: " + token.getType());
             }
@@ -43,12 +43,12 @@ public class TomlParser {
         return toml;
     }
 
-    private void parseKeyValuePair(Toml toml, TomlToken keyToken) {
+    private void parseKeyValuePair(TomlTable currentTable, TomlToken keyToken) {
         List<String> keyPath = new ArrayList<>(tryParseKey(keyToken));
 
         String key = keyPath.remove(keyPath.size() - 1);
 
-        TomlTable table = toml.getCurrentTable();
+        TomlTable table = currentTable;
         for (String tableKey : keyPath) {
             table = table.computeIfAbsent(tableKey, (k) -> new BasicTomlTable());
         }
@@ -167,8 +167,6 @@ public class TomlParser {
             return null;
         }
 
-        Object value = null;
-
         TomlToken valueToken = iterator.next();
         while (valueToken.getType() == TomlTokenType.WHITESPACE) {
             if (!iterator.hasNext()) {
@@ -181,36 +179,72 @@ public class TomlParser {
         switch (valueToken.getType()) {
             case BASIC_STRING:
             case LITERAL_STRING:
-                value = valueToken.getValue();
-                break;
+                return valueToken.getValue();
             case BOOLEAN:
-                value = Boolean.parseBoolean(valueToken.getValue());
-                break;
+                return Boolean.parseBoolean(valueToken.getValue());
             case INTEGER:
-                value = Integer.parseInt(valueToken.getValue().replaceAll("_", ""));
-                break;
+                return Integer.parseInt(valueToken.getValue().replaceAll("_", ""));
             case HEX_INTEGER:
-                value = Integer.parseInt(valueToken.getValue().replaceAll("(^0x|_)", ""), 16);
-                break;
+                return Integer.parseInt(valueToken.getValue().replaceAll("(^0x|_)", ""), 16);
             case OCT_INTEGER:
-                value = Integer.parseInt(valueToken.getValue().replaceAll("(^0o|_)", ""), 8);
-                break;
+                return Integer.parseInt(valueToken.getValue().replaceAll("(^0o|_)", ""), 8);
             case BIN_INTEGER:
-                value = Integer.parseInt(valueToken.getValue().replaceAll("(^0b|_)", ""), 2);
-                break;
+                return Integer.parseInt(valueToken.getValue().replaceAll("(^0b|_)", ""), 2);
             case FLOAT:
                 if (valueToken.getValue().equals("nan")) {
                     return Float.NaN;
                 } else if (valueToken.getValue().equals("inf")) {
                     return Float.POSITIVE_INFINITY;
-                } else {
-                    value = Float.parseFloat(valueToken.getValue());
+                }
+
+                return Float.parseFloat(valueToken.getValue());
+            case BRACE_START:
+                return parseInlineTable();
+        }
+
+        return null;
+    }
+
+    private TomlTable parseInlineTable() {
+        BasicTomlTable table = new BasicTomlTable();
+
+        boolean commaFound = false;
+
+        TomlToken token = iterator.next();
+        while (true) {
+            while (token.getType() == TomlTokenType.WHITESPACE || token.getType() == TomlTokenType.COMMENT || token.getType() == TomlTokenType.NEWLINE) {
+                if (!iterator.hasNext()) {
+                    return null;
+                }
+
+                token = iterator.next();
+            }
+
+            if (token.getType() == TomlTokenType.BRACE_END) {
+                if (commaFound) {
+                    throw new IllegalStateException("Trailing comma is forbidden here.");
                 }
 
                 break;
+            } else if (token.getType() == TomlTokenType.COMMA) {
+                if (commaFound) {
+                    throw new IllegalStateException("Comma occurs several times in a row.");
+                }
+
+                commaFound = true;
+            } else {
+                parseKeyValuePair(table, token);
+                commaFound = false;
+            }
+
+            if (!iterator.hasNext()) {
+                return null;
+            }
+
+            token = iterator.next();
         }
 
-        return value;
+        return table;
     }
 
     private static boolean isKey(TomlTokenType type) {

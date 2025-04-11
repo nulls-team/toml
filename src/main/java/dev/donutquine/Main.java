@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException, TomlException {
-        TomlParser parser = new TomlParser("# test comment\nf1 = -0.0\nf2=5e+22\nb=true\ni=+3_03_1123__21");
+        TomlParser parser = new TomlParser("# test comment\nf1 = -0.0\nf2= { #test comment\ntest.\"google.com\" = {v=123}#testcomment2\n }");
         Toml toml = parser.parse();
 
         System.out.println(toml);
