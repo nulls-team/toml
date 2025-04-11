@@ -27,6 +27,34 @@ public class BasicTomlLexer implements TomlLexer {
     private static final char MINUS_SIGN = '-';
     private static final char UNDERSCORE = '_';
 
+    /* language=RegExp */
+    @SuppressWarnings("RegExpUnnecessaryNonCapturingGroup")
+    private static final String UNSIGNED_INTEGER_REGEX = "(?:0|[1-9](?:_?[0-9]+)*)";
+    /* language=RegExp */
+    private static final String INTEGER_REGEX = "[+-]?" + UNSIGNED_INTEGER_REGEX;
+    /* language=RegExp */
+    private static final String HEX_INTEGER_REGEX = "0x[0-9A-F](?:_?[0-9A-F]+)*";
+    /* language=RegExp */
+    private static final String OCT_INTEGER_REGEX = "0o[0-7](?:_?[0-7]+)*";
+    /* language=RegExp */
+    private static final String BIN_INTEGER_REGEX = "0b[01](?:_?[01]+)*";
+    /* language=RegExp */
+    private static final String BOOLEAN_REGEX = "true|false";
+    /* language=RegExp */
+    @SuppressWarnings("RegExpUnnecessaryNonCapturingGroup")
+    private static final String ZERO_PREFIXABLE_INTEGER = "(?:[0-9](?:_?[0-9]+)*)";
+    /* language=RegExp */
+    private static final String SPECIAL_FLOAT = "nan|inf";
+    /* language=RegExp */
+    @SuppressWarnings("RegExpUnnecessaryNonCapturingGroup")
+    private static final String FLOAT_FRAC_PART = "(?:\\." + ZERO_PREFIXABLE_INTEGER + ')';
+    /* language=RegExp */
+    @SuppressWarnings("RegExpUnnecessaryNonCapturingGroup")
+    private static final String FLOAT_EXP_PART = "(?:[Ee][+-]?" + ZERO_PREFIXABLE_INTEGER + ')';
+    /* language=RegExp */
+    @SuppressWarnings("RegExpUnnecessaryNonCapturingGroup")
+    private static final String FLOAT_REGEX = "[+-]?(?:(?:" + UNSIGNED_INTEGER_REGEX + "(?:" + FLOAT_FRAC_PART + FLOAT_EXP_PART + "?|" + FLOAT_EXP_PART + ")" + ")|" + SPECIAL_FLOAT + ")";
+
     private final String string;
 
     private int position;
@@ -114,12 +142,12 @@ public class BasicTomlLexer implements TomlLexer {
                 tokenType = TomlTokenType.BRACE_END;
             } else {
                 LexemeRegexMatchResult matchResult = nextRegexMatch(
-                    new LexemeRegex(/* language=RegExp */ "[+-]?[0-9]([0-9]+_?)+[0-9]+", TomlTokenType.INTEGER),
-                    new LexemeRegex(/* language=RegExp */ "0x[0-9A-F]([0-9A-F]+_?)+[0-9A-F]+", TomlTokenType.HEX_INTEGER),
-                    new LexemeRegex(/* language=RegExp */ "0o[0-7]([0-7]+_?)+[0-7]+", TomlTokenType.OCT_INTEGER),
-                    new LexemeRegex(/* language=RegExp */ "0b[01]([01]+_?)+[01]+", TomlTokenType.BIN_INTEGER),
-                    new LexemeRegex(/* language=RegExp */ "[+-]?(nan|inf)", TomlTokenType.FLOAT),
-                    new LexemeRegex(/* language=RegExp */ "(true|false)", TomlTokenType.BOOLEAN)
+                    new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),
+                    new LexemeRegex(INTEGER_REGEX, TomlTokenType.INTEGER),
+                    new LexemeRegex(HEX_INTEGER_REGEX, TomlTokenType.HEX_INTEGER),
+                    new LexemeRegex(OCT_INTEGER_REGEX, TomlTokenType.OCT_INTEGER),
+                    new LexemeRegex(BIN_INTEGER_REGEX, TomlTokenType.BIN_INTEGER),
+                    new LexemeRegex(BOOLEAN_REGEX, TomlTokenType.BOOLEAN)
                 );
 
                 if (matchResult != null) {
@@ -281,12 +309,12 @@ public class BasicTomlLexer implements TomlLexer {
     }
 
     private String getRegexMatch(String regex) {
-        Pattern pattern = Pattern.compile("^" + regex + ".*$");
+        Pattern pattern = Pattern.compile("^(" + regex + ")");
 
         Matcher matcher = pattern.matcher(string);
         matcher.region(position, string.length());
 
-        if (matcher.matches() && matcher.start() == position) {
+        if (matcher.find() && matcher.start() == position) {
             return matcher.group();
         }
 
