@@ -46,11 +46,23 @@ public final class CharsetValidator {
         return character >= '0' && character <= '9' || character >= 'A' && character <= 'F';
     }
 
+    public static boolean isOctDigit(int character) {
+        return character >= '0' && character <= '7';
+    }
+
+    public static boolean isBinDigit(int character) {
+        return character == '0' || character == '1';
+    }
+
     public static boolean isLiteralChar(int character) {
         return character == '\t' || (character >= 0x20 && character <= 0x26) || (character >= 0x28 && character <= 0x76) || isNonAscii(character);
     }
 
     public static boolean isNonAscii(int character) {
         return (character >= 0x80 && character <= 0xd7ff) || (character >= 0xe000 && character <= 0x10ffff);
+    }
+
+    public static boolean isNewline(int character) {
+        return character == '\n' || character == '\r';
     }
 }

@@ -184,7 +184,16 @@ public class TomlParser {
                 value = valueToken.getValue();
                 break;
             case INTEGER:
-                value = Integer.parseInt(valueToken.getValue());
+                value = Integer.parseInt(valueToken.getValue().replaceAll("_", ""));
+                break;
+            case HEX_INTEGER:
+                value = Integer.parseInt(valueToken.getValue().replaceAll("(^0x|_)", ""), 16);
+                break;
+            case OCT_INTEGER:
+                value = Integer.parseInt(valueToken.getValue().replaceAll("(^0o|_)", ""), 8);
+                break;
+            case BIN_INTEGER:
+                value = Integer.parseInt(valueToken.getValue().replaceAll("(^0b|_)", ""), 2);
                 break;
             case FLOAT:
             case IDENT:
