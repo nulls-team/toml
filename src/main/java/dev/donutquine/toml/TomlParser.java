@@ -196,19 +196,14 @@ public class TomlParser {
                 value = Integer.parseInt(valueToken.getValue().replaceAll("(^0b|_)", ""), 2);
                 break;
             case FLOAT:
-            case IDENT:
-                if (valueToken.getType() == TomlTokenType.IDENT) {
-                    if (valueToken.getValue().equals("nan")) {
-                        return Float.NaN;
-                    } else if (valueToken.getValue().equals("inf")) {
-                        return Float.POSITIVE_INFINITY;
-                    } else {
-                        // Unsupported values
-                        return null;
-                    }
+                if (valueToken.getValue().equals("nan")) {
+                    return Float.NaN;
+                } else if (valueToken.getValue().equals("inf")) {
+                    return Float.POSITIVE_INFINITY;
+                } else {
+                    value = Float.parseFloat(valueToken.getValue());
                 }
 
-                value = Float.parseFloat(valueToken.getValue());
                 break;
         }
 

@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public class Main {
     public static void main(String[] args) throws IOException, TomlException {
-        TomlParser parser = new TomlParser("# test comment\n[[v]]'nan' = \"test \n\rstring aha\"");
+        TomlParser parser = new TomlParser("# test comment\nnan = nan");
         Toml toml = parser.parse();
 
         System.out.println(toml);

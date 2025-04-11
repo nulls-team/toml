@@ -1,12 +1,12 @@
 package dev.donutquine.toml;
 
-import dev.donutquine.toml.exceptions.ForbiddenCharInLiteralString;
 import dev.donutquine.toml.exceptions.TomlException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BasicTomlLexer implements TomlLexer {
     private static final int EOF = -1;
@@ -133,6 +133,13 @@ public class BasicTomlLexer implements TomlLexer {
             } else if (current == BRACE_END) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_END;
+            } else {
+                String floatMatch = getRegexMatch(/* language=RegExp */ "[+-]?(|nan|inf)");
+                if (floatMatch != null) {
+                    buffer.append(floatMatch);
+                    skip(floatMatch.length());
+                    tokenType = TomlTokenType.FLOAT;
+                }
             }
 
             valueRequired = false;
@@ -269,5 +276,25 @@ public class BasicTomlLexer implements TomlLexer {
         }
 
         return character;
+    }
+
+    private void skip(int count) {
+        while (position < string.length() && count > 0) {
+            readChar();
+            count--;
+        }
+    }
+
+    private String getRegexMatch(String regex) {
+        Pattern pattern = Pattern.compile("^" + regex + ".*$");
+
+        Matcher matcher = pattern.matcher(string);
+        matcher.region(position, string.length());
+
+        if (matcher.matches() && matcher.start() == position) {
+            return matcher.group();
+        }
+
+        return null;
     }
 }
