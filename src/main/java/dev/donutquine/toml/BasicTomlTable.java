@@ -1,6 +1,9 @@
 package dev.donutquine.toml;
 
+import dev.donutquine.toml.util.StringEscaper;
+
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -99,5 +102,29 @@ public class BasicTomlTable implements TomlTable {
     @Override
     public void setObject(String key, Object value) {
         values.put(key, value);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder result = new StringBuilder();
+        result.append("{");
+
+        for (Iterator<Map.Entry<String, Object>> iterator = values.entrySet().iterator(); iterator.hasNext(); ) {
+            Map.Entry<String, Object> entry = iterator.next();
+            Object value = entry.getValue();
+            String valueString = value.toString();
+            if (value instanceof String) {
+                valueString = '"' + StringEscaper.escape(valueString) + '"';
+            }
+
+            result.append(entry.getKey()).append("=").append(valueString);
+
+            if (iterator.hasNext()) {
+                result.append(',');
+            }
+        }
+
+        result.append("}");
+        return result.toString();
     }
 }

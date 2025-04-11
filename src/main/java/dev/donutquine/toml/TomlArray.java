@@ -1,5 +1,7 @@
 package dev.donutquine.toml;
 
+import dev.donutquine.toml.util.StringEscaper;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,5 +77,28 @@ public class TomlArray implements ArrayValueAccessor, ArrayValueMutator {
     @Override
     public void addTable(TomlTable value) {
         values.add(value);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder result = new StringBuilder();
+        result.append("[");
+
+        for (int i = 0; i < values.size(); i++) {
+            Object value = values.get(i);
+            String valueString = value.toString();
+            if (value instanceof String) {
+                valueString = '"' + StringEscaper.escape(valueString) + '"';
+            }
+
+            result.append(valueString);
+
+            if (i < values.size() - 1) {
+                result.append(',');
+            }
+        }
+
+        result.append("]");
+        return result.toString();
     }
 }

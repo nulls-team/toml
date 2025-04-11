@@ -29,4 +29,9 @@ public class Toml {
     TomlTable getCurrentTable() {
         return currentTable;
     }
+
+    @Override
+    public String toString() {
+        return "Toml{" + rootTable + '}';
+    }
 }
