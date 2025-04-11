@@ -176,42 +176,45 @@ public class BasicTomlLexer implements TomlLexer {
         }
     }
 
-    private void nextLiteralString(StringBuilder buffer) throws TomlException {
-        readChar(); // consume '
+    private void nextBasicString(StringBuilder buffer) {
+        readChar(); // consume "
 
-        while (true) {
+        boolean escaped = false;
+
+        while (position < string.length()) {
             int character = peekChar();
-            if (character == EOF || character == LITERAL_STRING_QUOTE) {
-                readChar();
+
+            if (character == BASIC_STRING_QUOTE && !escaped) {
                 break;
             }
 
-            if (!CharsetValidator.isLiteralChar(character)) {
-                throwException(ForbiddenCharInLiteralString::new);
+            buffer.append((char) readChar());
+
+            if (character == '\\') {
+                escaped = true;
+                continue;
+            }
+
+            escaped = false;
+        }
+
+        readChar(); // consume "
+    }
+
+    private void nextLiteralString(StringBuilder buffer) {
+        readChar(); // consume '
+
+        while (position < string.length()) {
+            int character = peekChar();
+
+            if (character == LITERAL_STRING_QUOTE) {
+                break;
             }
 
             buffer.append((char) readChar());
         }
-    }
 
-    private void throwException(BiFunction<String, Location, TomlException> exceptionFactory) throws TomlException {
-        String line = string.split("\r?\n")[this.line];
-
-        throw exceptionFactory.apply(line, new Location(this.line, column));
-    }
-
-    private void nextBasicString(StringBuilder buffer) {
-        readChar(); // consume "
-        readUntil(buffer, BASIC_STRING_QUOTE);
-
-        char lastChar = buffer.charAt(buffer.length() - 1);
-        while (lastChar == ESCAPE_CHAR) {
-            buffer.append(BASIC_STRING_QUOTE);
-            readUntil(buffer, ESCAPE_CHAR);
-            lastChar = buffer.charAt(buffer.length() - 1);
-        }
-
-        readChar();
+        readChar(); // consume '
     }
 
     private void readUntil(StringBuilder buffer, char until) {
