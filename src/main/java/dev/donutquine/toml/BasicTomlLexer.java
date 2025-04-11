@@ -118,7 +118,8 @@ public class BasicTomlLexer implements TomlLexer {
                     new LexemeRegex(/* language=RegExp */ "0x[0-9A-F]([0-9A-F]+_?)+[0-9A-F]+", TomlTokenType.HEX_INTEGER),
                     new LexemeRegex(/* language=RegExp */ "0o[0-7]([0-7]+_?)+[0-7]+", TomlTokenType.OCT_INTEGER),
                     new LexemeRegex(/* language=RegExp */ "0b[01]([01]+_?)+[01]+", TomlTokenType.BIN_INTEGER),
-                    new LexemeRegex(/* language=RegExp */ "[+-]?(nan|inf)", TomlTokenType.FLOAT)
+                    new LexemeRegex(/* language=RegExp */ "[+-]?(nan|inf)", TomlTokenType.FLOAT),
+                    new LexemeRegex(/* language=RegExp */ "(true|false)", TomlTokenType.BOOLEAN)
                 );
 
                 if (matchResult != null) {

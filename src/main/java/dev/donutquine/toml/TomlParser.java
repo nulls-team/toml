@@ -183,6 +183,9 @@ public class TomlParser {
             case LITERAL_STRING:
                 value = valueToken.getValue();
                 break;
+            case BOOLEAN:
+                value = Boolean.parseBoolean(valueToken.getValue());
+                break;
             case INTEGER:
                 value = Integer.parseInt(valueToken.getValue().replaceAll("_", ""));
                 break;
