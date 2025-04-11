@@ -39,7 +39,7 @@ public final class TomlToken {
      * @param string The input String.
      * @return The output String.
      **/
-    public static String escape(String string) {
+    private static String escape(String string) {
         return string.replace("\\", "\\\\")
             .replace("\t", "\\t")
             .replace("\b", "\\b")

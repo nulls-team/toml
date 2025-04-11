@@ -2,30 +2,30 @@ package dev.donutquine.toml;
 
 import dev.donutquine.toml.exceptions.ForbiddenCharInLiteralString;
 import dev.donutquine.toml.exceptions.TomlException;
-import dev.donutquine.toml.exceptions.UnknownLexemeException;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class BasicTomlLexer implements TomlLexer {
     private static final int EOF = -1;
 
     private static final char COMMENT_START_SYMBOL = '#';
-    private static final char BASIC_STRING_START = '"';
-    private static final char BASIC_STRING_END = '"';
-    private static final char LITERAL_STRING_START = '\'';
-    private static final char LITERAL_STRING_END = '\'';
+    private static final char BASIC_STRING_QUOTE = '"';
+    private static final char LITERAL_STRING_QUOTE = '\'';
     private static final char ESCAPE_CHAR = '\\';
-    private static final char NEWLINE_CHAR = '\n';
-    private static final char LEFT_BRACKET = '[';
-    private static final char RIGHT_BRACKET = ']';
+    private static final char NEWLINE = '\n';
+    private static final char BRACKET_START = '[';
+    private static final char BRACKET_END = ']';
+    private static final char BRACE_START = '{';
+    private static final char BRACE_END = '}';
     private static final char EQUALS = '=';
     private static final char COMMA = ',';
-    private static final char DOT = '.';
-    public static final char PLUS_SIGN = '+';
-    public static final char MINUS_SIGN = '-';
-    public static final char UNDERSCORE = '_';
+    private static final char PERIOD = '.';
+    private static final char PLUS_SIGN = '+';
+    private static final char MINUS_SIGN = '-';
+    private static final char UNDERSCORE = '_';
 
     private final String string;
 
@@ -53,8 +53,6 @@ public class BasicTomlLexer implements TomlLexer {
     }
 
     private TomlToken next() throws TomlException {
-        skipWhitespace();
-
         if (position >= string.length()) {
             return null;
         }
@@ -66,49 +64,64 @@ public class BasicTomlLexer implements TomlLexer {
         StringBuilder buffer = new StringBuilder();
         TomlTokenType tokenType;
 
-        if (current == NEWLINE_CHAR) {
+        if (CharsetValidator.isWhitespace(current)) {
+            readWhitespace(buffer);
+
+            tokenType = TomlTokenType.WHITESPACE;
+        } else if (current == NEWLINE || current == '\r' && nextChar() == NEWLINE) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.NEWLINE;
         } else if (current == COMMENT_START_SYMBOL) {
             buffer.append((char) readChar());
-            readUntil(buffer, NEWLINE_CHAR);
+            readUntil(buffer, NEWLINE);
             tokenType = TomlTokenType.COMMENT;
-        } else if (current == BASIC_STRING_START) {
-            readChar(); // consume "
-            nextBasicString(buffer);
-            tokenType = TomlTokenType.BASIC_STRING;
-        } else if (current == LITERAL_STRING_START) {
-            readChar(); // consume '
-            nextLiteralString(buffer);
-            tokenType = TomlTokenType.LITERAL_STRING;
-        } else if (current == PLUS_SIGN || current == MINUS_SIGN) {
-            buffer.append((char) readChar());
-
-            tokenType = tryReadNumber(buffer);
-
-            if (tokenType == null) {
-                throwException(UnknownLexemeException::new);
-            }
-        } else if (current == LEFT_BRACKET) {
-            buffer.append((char) readChar());
-            tokenType = TomlTokenType.LEFT_BRACKET;
-        } else if (current == RIGHT_BRACKET) {
-            buffer.append((char) readChar());
-            tokenType = TomlTokenType.RIGHT_BRACKET;
-        } else if (current == EQUALS) {
-            buffer.append((char) readChar());
-            tokenType = TomlTokenType.EQUALS;
         } else if (current == COMMA) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.COMMA;
-        } else if (current == DOT) {
+        } else if (current == PERIOD) {
             buffer.append((char) readChar());
-            tokenType = TomlTokenType.DOT;
-        } else if (isBareKeyChar(current)) {
-            tokenType = readBareKey(buffer);
+            tokenType = TomlTokenType.PERIOD;
+        } else if (current == EQUALS) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.EQUALS;
+        } else if (current == BASIC_STRING_QUOTE) {
+            readChar(); // consume "
+            nextBasicString(buffer);
+            tokenType = TomlTokenType.BASIC_STRING;
+        } else if (current == LITERAL_STRING_QUOTE) {
+            readChar(); // consume '
+            nextLiteralString(buffer);
+            tokenType = TomlTokenType.LITERAL_STRING;
+        } else if (current == '0' && nextChar() == 'x') {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.HEX_INTEGER;
+        } else if (current == '0' && nextChar() == 'o') {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.OCT_INTEGER;
+        } else if (current == '0' && nextChar() == 'b') {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.BIN_INTEGER;
+        } else if (CharsetValidator.isUnquotedKeyChar(current)) {
+            readUnquotedKey(buffer);
+            tokenType = TomlTokenType.IDENT;
+        } else if (current == PLUS_SIGN || current == MINUS_SIGN || CharsetValidator.isDigit(current)) {
+            buffer.append((char) readChar());
+            tokenType = tryReadNumber(buffer);  // TODO
+        } else if (current == BRACKET_START) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.BRACKET_START;
+        } else if (current == BRACKET_END) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.BRACKET_END;
+        } else if (current == BRACE_START) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.BRACE_START;
+        } else if (current == BRACE_END) {
+            buffer.append((char) readChar());
+            tokenType = TomlTokenType.BRACE_END;
         } else {
-            throwException(UnknownLexemeException::new);
-            return null;
+            readUntil(buffer, CharsetValidator::isWhitespace);
+            tokenType = TomlTokenType.UNKNOWN;
         }
 
         String value = buffer.toString();
@@ -116,60 +129,45 @@ public class BasicTomlLexer implements TomlLexer {
     }
 
     private TomlTokenType tryReadNumber(StringBuilder buffer) {
-        return null;
+        return TomlTokenType.UNKNOWN;
     }
 
-    private TomlTokenType readBareKey(StringBuilder buffer) {
+    private void readWhitespace(StringBuilder buffer) {
         while (position < string.length()) {
             int c = peekChar();
-            if (!isBareKeyChar(c)) break;
-            buffer.append((char) readChar());
-        }
-
-        return TomlTokenType.BARE_KEY;
-    }
-
-    private boolean isBareKeyChar(int c) {
-        return Character.isLetterOrDigit(c) || c == MINUS_SIGN || c == UNDERSCORE;
-    }
-
-    private void skipWhitespace() {
-        while (position < string.length()) {
-            int c = peekChar();
-            if (isWhitespace(c)) {
-                readChar();
+            if (CharsetValidator.isWhitespace(c)) {
+                buffer.append((char) readChar());
             } else {
                 break;
             }
         }
     }
 
-    private boolean isWhitespace(int character) {
-        return character == '\t' || character == ' ';
+    private void readUnquotedKey(StringBuilder buffer) {
+        while (position < string.length()) {
+            int character = peekChar();
+            if (CharsetValidator.isUnquotedKeyChar(character)) {
+                buffer.append((char) readChar());
+            } else {
+                break;
+            }
+        }
     }
 
     private void nextLiteralString(StringBuilder buffer) throws TomlException {
         while (true) {
             int character = peekChar();
-            if (character == EOF || character == LITERAL_STRING_END) {
+            if (character == EOF || character == LITERAL_STRING_QUOTE) {
                 readChar();
                 break;
             }
 
-            if (!isLiteralChar(character)) {
+            if (!CharsetValidator.isLiteralChar(character)) {
                 throwException(ForbiddenCharInLiteralString::new);
             }
 
             buffer.append((char) readChar());
         }
-    }
-
-    private boolean isLiteralChar(int character) {
-        return character == '\t' || (character >= 0x20 && character <= 0x26) || (character >= 0x28 && character <= 0x76) || isNonAscii(character);
-    }
-
-    private boolean isNonAscii(int character) {
-        return (character >= 0x80 && character <= 0xd7ff) || (character >= 0xe000 && character <= 0x10ffff);
     }
 
     private void throwException(BiFunction<String, Location, TomlException> exceptionFactory) throws TomlException {
@@ -179,11 +177,11 @@ public class BasicTomlLexer implements TomlLexer {
     }
 
     private void nextBasicString(StringBuilder buffer) {
-        readUntil(buffer, BASIC_STRING_END);
+        readUntil(buffer, BASIC_STRING_QUOTE);
 
         char lastChar = buffer.charAt(buffer.length() - 1);
         while (lastChar == ESCAPE_CHAR) {
-            buffer.append(BASIC_STRING_END);
+            buffer.append(BASIC_STRING_QUOTE);
             readUntil(buffer, ESCAPE_CHAR);
             lastChar = buffer.charAt(buffer.length() - 1);
         }
@@ -202,12 +200,31 @@ public class BasicTomlLexer implements TomlLexer {
         }
     }
 
+    private void readUntil(StringBuilder buffer, Function<Integer, Boolean> untilFunction) {
+        while (true) {
+            int character = peekChar();
+            if (character == EOF || untilFunction.apply(character)) {
+                break;
+            }
+
+            buffer.append((char) readChar());
+        }
+    }
+
     private int peekChar() {
         if (position >= string.length()) {
             return EOF;
         }
 
         return string.charAt(position);
+    }
+
+    private int nextChar() {
+        if (position + 1 >= string.length()) {
+            return EOF;
+        }
+
+        return string.charAt(position + 1);
     }
 
     private int readChar() {
@@ -218,7 +235,7 @@ public class BasicTomlLexer implements TomlLexer {
         char character = string.charAt(position++);
         column++;
 
-        if (character == NEWLINE_CHAR) {
+        if (character == NEWLINE) {
             line++;
             column = 0;
         }

@@ -75,7 +75,7 @@ public class TomlParser {
 
         TomlToken token = iterator.next();
 
-        if (token.getType() == TomlTokenType.LEFT_BRACKET) {
+        if (token.getType() == TomlTokenType.BRACKET_START) {
             isArray = true;
 
             if (iterator.hasNext()) {
@@ -90,7 +90,7 @@ public class TomlParser {
             throw new IllegalStateException("Key path was expected, but not found");
         }
 
-        if (unhandledToken.getType() != TomlTokenType.RIGHT_BRACKET) {
+        if (unhandledToken.getType() != TomlTokenType.BRACKET_END) {
             throw new IllegalStateException("Unexpected token: " + unhandledToken);
         }
 
@@ -101,7 +101,7 @@ public class TomlParser {
 
             token = iterator.next();
 
-            if (token.getType() != TomlTokenType.RIGHT_BRACKET) {
+            if (token.getType() != TomlTokenType.BRACKET_END) {
                 throw new IllegalStateException("Unexpected token: " + unhandledToken);
             }
 
@@ -130,7 +130,7 @@ public class TomlParser {
 
         while (true) {
             // Dotted key
-            if (keyToken.getType() == TomlTokenType.DOT) {
+            if (keyToken.getType() == TomlTokenType.PERIOD) {
                 if (iterator.hasNext()) {
                     keyToken = iterator.next();
                     if (!isKey(keyToken.getType())) {
@@ -147,7 +147,7 @@ public class TomlParser {
                 } else {
                     throw new IllegalStateException("Key token wasn't expected, but received " + keyToken);
                 }
-            } else {
+            } else if (keyToken.getType() != TomlTokenType.WHITESPACE) {
                 this.unhandledToken = keyToken;
                 break;
             }
@@ -170,6 +170,14 @@ public class TomlParser {
         Object value = null;
 
         TomlToken valueToken = iterator.next();
+        while (valueToken.getType() == TomlTokenType.WHITESPACE) {
+            if (!iterator.hasNext()) {
+                return null;
+            }
+
+            valueToken = iterator.next();
+        }
+
         switch (valueToken.getType()) {
             case BASIC_STRING:
             case LITERAL_STRING:
@@ -179,8 +187,8 @@ public class TomlParser {
                 value = Integer.parseInt(valueToken.getValue());
                 break;
             case FLOAT:
-            case BARE_KEY:
-                if (valueToken.getType() == TomlTokenType.BARE_KEY) {
+            case IDENT:
+                if (valueToken.getType() == TomlTokenType.IDENT) {
                     if (valueToken.getValue().equals("nan")) {
                         return Float.NaN;
                     } else if (valueToken.getValue().equals("inf")) {
@@ -192,6 +200,7 @@ public class TomlParser {
                 }
 
                 value = Float.parseFloat(valueToken.getValue());
+                break;
         }
 
         return value;
@@ -199,7 +208,7 @@ public class TomlParser {
 
     private static boolean isKey(TomlTokenType type) {
         switch (type) {
-            case BARE_KEY:
+            case IDENT:
             case BASIC_STRING:
             case LITERAL_STRING:
             case INTEGER:
@@ -211,6 +220,6 @@ public class TomlParser {
     }
 
     private boolean isTable(TomlTokenType type) {
-        return type == TomlTokenType.LEFT_BRACKET;
+        return type == TomlTokenType.BRACKET_START;
     }
 }
