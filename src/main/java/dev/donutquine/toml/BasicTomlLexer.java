@@ -106,39 +106,25 @@ public class BasicTomlLexer implements TomlLexer {
             tokenType = TomlTokenType.LITERAL_STRING;
             valueRequired = false;
         } else if (valueRequired) {
-            if (current == '0' && nextChar() == 'x') {
-                buffer.append((char) readChar());
-                buffer.append((char) readChar());
-                // TODO: validate underscore
-                readUntil(buffer, character -> !CharsetValidator.isHexDigit(character) && character != '_');
-                tokenType = TomlTokenType.HEX_INTEGER;
-            } else if (current == '0' && nextChar() == 'o') {
-                buffer.append((char) readChar());
-                buffer.append((char) readChar());
-                // TODO: validate underscore
-                readUntil(buffer, character -> !CharsetValidator.isOctDigit(character) && character != '_');
-                tokenType = TomlTokenType.OCT_INTEGER;
-            } else if (current == '0' && nextChar() == 'b') {
-                buffer.append((char) readChar());
-                buffer.append((char) readChar());
-                // TODO: validate underscore
-                readUntil(buffer, character -> !CharsetValidator.isBinDigit(character) && character != '_');
-                tokenType = TomlTokenType.BIN_INTEGER;
-            } else if (current == PLUS_SIGN || current == MINUS_SIGN || CharsetValidator.isDigit(current)) {
-                buffer.append((char) readChar());
-                tokenType = tryReadNumber(buffer);  // TODO
-            } else if (current == BRACE_START) {
+            if (current == BRACE_START) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_START;
             } else if (current == BRACE_END) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_END;
             } else {
-                String floatMatch = getRegexMatch(/* language=RegExp */ "[+-]?(|nan|inf)");
-                if (floatMatch != null) {
-                    buffer.append(floatMatch);
-                    skip(floatMatch.length());
-                    tokenType = TomlTokenType.FLOAT;
+                LexemeRegexMatchResult matchResult = nextRegexMatch(
+                    new LexemeRegex(/* language=RegExp */ "[+-]?[0-9]([0-9]+_?)+[0-9]+", TomlTokenType.INTEGER),
+                    new LexemeRegex(/* language=RegExp */ "0x[0-9A-F]([0-9A-F]+_?)+[0-9A-F]+", TomlTokenType.HEX_INTEGER),
+                    new LexemeRegex(/* language=RegExp */ "0o[0-7]([0-7]+_?)+[0-7]+", TomlTokenType.OCT_INTEGER),
+                    new LexemeRegex(/* language=RegExp */ "0b[01]([01]+_?)+[01]+", TomlTokenType.BIN_INTEGER),
+                    new LexemeRegex(/* language=RegExp */ "[+-]?(nan|inf)", TomlTokenType.FLOAT)
+                );
+
+                if (matchResult != null) {
+                    buffer.append(matchResult.lexeme);
+                    skip(matchResult.lexeme.length());
+                    tokenType = matchResult.type;
                 }
             }
 
@@ -157,8 +143,16 @@ public class BasicTomlLexer implements TomlLexer {
         return new TomlToken(tokenType, new Location(startLine, startColumn), new Location(line, column), value);
     }
 
-    private TomlTokenType tryReadNumber(StringBuilder buffer) {
-        return TomlTokenType.UNKNOWN;
+    private LexemeRegexMatchResult nextRegexMatch(LexemeRegex... lexemeRegexps) {
+        for (LexemeRegex lexeme : lexemeRegexps) {
+            String match = getRegexMatch(lexeme.regex);
+            if (match != null) {
+                return new LexemeRegexMatchResult(match, lexeme.type);
+            }
+        }
+
+
+        return null;
     }
 
     private void readWhitespace(StringBuilder buffer) {
@@ -296,5 +290,25 @@ public class BasicTomlLexer implements TomlLexer {
         }
 
         return null;
+    }
+
+    private static class LexemeRegex {
+        public final String regex;
+        public final TomlTokenType type;
+
+        private LexemeRegex(String regex, TomlTokenType type) {
+            this.regex = regex;
+            this.type = type;
+        }
+    }
+
+    private static class LexemeRegexMatchResult {
+        public final String lexeme;
+        public final TomlTokenType type;
+
+        private LexemeRegexMatchResult(String lexeme, TomlTokenType type) {
+            this.lexeme = lexeme;
+            this.type = type;
+        }
     }
 }
