@@ -55,7 +55,8 @@ public class BasicTomlLexer implements TomlLexer {
     private int position;
     private int line, column;
 
-    private boolean valueRequired, arrayValueRequired;
+    private boolean valueRequired;
+    private int arrayIndex = 0;
 
     public BasicTomlLexer(String toml) {
         this.string = toml;
@@ -104,7 +105,6 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == COMMA) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.COMMA;
-            valueRequired = false;
         } else if (current == PERIOD) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.PERIOD;
@@ -116,18 +116,28 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == BRACKET_START) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_START;
-            // Note: table declaration if valueRequired is false
-            arrayValueRequired = valueRequired;
-            valueRequired = false;
+            // Note: it is table declaration if valueRequired is false, otherwise an array
+            if (valueRequired) {
+                arrayIndex++;
+            }
+
+            if (arrayIndex == 0) {
+                valueRequired = false;
+            }
         } else if (current == BRACKET_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_END;
-            valueRequired = false;
-            arrayValueRequired = false;
+            if (valueRequired) {
+                arrayIndex--;
+
+                if (arrayIndex == 0) {
+                    valueRequired = false;
+                }
+            }
         } else if (current == BRACE_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACE_END;
-        } else if (valueRequired || arrayValueRequired) {
+        } else if (valueRequired || arrayIndex > 0) {
             if (current == BRACE_START) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_START;
@@ -160,15 +170,13 @@ public class BasicTomlLexer implements TomlLexer {
                 }
             }
 
-            valueRequired = false;
+            valueRequired = arrayIndex > 0;
         } else if (current == BASIC_STRING_QUOTE) {
             readBasicString(buffer);
             tokenType = TomlTokenType.BASIC_STRING;
-            valueRequired = false;
         } else if (current == LITERAL_STRING_QUOTE) {
             readLiteralString(buffer);
             tokenType = TomlTokenType.LITERAL_STRING;
-            valueRequired = false;
         } else if (CharsetValidator.isUnquotedKeyChar(current)) {
             readUnquotedKey(buffer);
             tokenType = TomlTokenType.IDENT;

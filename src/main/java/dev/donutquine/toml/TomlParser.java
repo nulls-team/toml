@@ -227,6 +227,7 @@ public class TomlParser {
         TomlArray array = new TomlArray();
 
         boolean commaFound = false;
+        boolean isFirst = true;
 
         TomlToken token = getCurrentToken();
 
@@ -237,19 +238,26 @@ public class TomlParser {
                 }
 
                 commaFound = true;
+            }
+
+            if (isFirst || commaFound) {
+                Object value = parseValue();
+                // TODO: log
+                if (value != null) {
+                    array.addObject(value);
+                    commaFound = false;
+                    isFirst = false;
+                }
             } else {
-                commaFound = false;
+                throw new IllegalStateException("Unexpected token: " + token);
             }
 
-            Object value = parseValue();
-            if (value != null) {
-                array.addObject(value);
-            }
-
-            token = getNextToken();
-            if (token == null) {
-                return null;
-            }
+            do {
+                token = getNextToken();
+                if (token == null) {
+                    return null;
+                }
+            } while (isSkippableToken(token));
         }
 
         return array;
