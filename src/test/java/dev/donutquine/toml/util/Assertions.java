@@ -8,9 +8,13 @@ import static org.junit.jupiter.api.Assertions.*;
 public class Assertions {
     private Assertions() {}
 
-    public static void assertValueEquals(ValueAccessor table, Object expected, String key) {
+    public static <T> T assertValueEquals(ValueAccessor table, Object expected, String key) {
         assertTrue(table.has(key), table.toString());
-        assertEquals(expected, table.getAs(key, Object.class), table.toString());
+        Object value = table.getAs(key, Object.class);
+        assertEquals(expected, value, table.toString());
+
+        //noinspection unchecked
+        return (T) value;
     }
 
     public static ValueAccessor assertTableExists(ValueAccessor table, String key) {

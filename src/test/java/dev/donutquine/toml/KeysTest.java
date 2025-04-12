@@ -71,4 +71,15 @@ public class KeysTest {
         assertValueEquals(fruitTable, "yellow", "color");
         assertValueEquals(fruitTable, "banana", "flavor");
     }
+
+    @Test
+    public void testDottedIndirectDefinition() {
+        TomlParser parser = new TomlParser(ResourceLoader.getStringResource("/spec/dotted_indirect_definition.toml"));
+        Toml toml = assertDoesNotThrow(parser::parse);
+
+        ValueAccessor fruitTable = assertTableExists(toml.getRootTable(), "fruit");
+        ValueAccessor appleTable = assertTableExists(fruitTable, "apple");
+        assertValueEquals(appleTable, true, "smooth");
+        assertValueEquals(fruitTable, 2, "orange");
+    }
 }

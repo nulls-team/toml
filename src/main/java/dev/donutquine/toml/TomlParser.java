@@ -1,5 +1,7 @@
 package dev.donutquine.toml;
 
+import dev.donutquine.toml.util.StringEscaper;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -174,11 +176,14 @@ public class TomlParser {
 
         switch (token.getType()) {
             case BASIC_STRING:
-            case LITERAL_STRING:
-            case MULTI_LINE_LITERAL_STRING:
-                return token.getValue();
+                return StringEscaper.unescape(token.getValue());
             case MULTI_LINE_BASIC_STRING:
-                return token.getValue().replaceAll("\\\\r?\\n[ \t\n]*", "");
+                String trimmedString = token.getValue().replaceAll("^\\r?\\n", "").replaceAll("\\\\r?\\n[ \t\n]*", "");
+                return StringEscaper.unescape(trimmedString);
+            case LITERAL_STRING:
+                return token.getValue();
+            case MULTI_LINE_LITERAL_STRING:
+                return token.getValue().replaceAll("^\\r?\\n", "");
             case BOOLEAN:
                 return Boolean.parseBoolean(token.getValue());
             case INTEGER:
