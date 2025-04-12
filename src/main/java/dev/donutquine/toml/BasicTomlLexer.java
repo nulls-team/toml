@@ -116,7 +116,8 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == BRACKET_START) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_START;
-            arrayValueRequired = true;
+            // Note: table declaration if valueRequired is false
+            arrayValueRequired = valueRequired;
             valueRequired = false;
         } else if (current == BRACKET_END) {
             buffer.append((char) readChar());

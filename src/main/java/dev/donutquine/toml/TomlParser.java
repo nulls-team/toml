@@ -228,7 +228,6 @@ public class TomlParser {
 
         boolean commaFound = false;
 
-
         TomlToken token = getCurrentToken();
 
         while (token.getType() != TomlTokenType.BRACKET_END) {
