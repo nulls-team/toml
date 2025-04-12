@@ -132,7 +132,7 @@ public class TomlParser {
                 if (token == null) {
                     return keys;
                 }
-            };
+            }
 
             // Dotted key
             if (token.getType() == TomlTokenType.PERIOD) {
@@ -174,7 +174,10 @@ public class TomlParser {
         switch (token.getType()) {
             case BASIC_STRING:
             case LITERAL_STRING:
+            case MULTI_LINE_LITERAL_STRING:
                 return token.getValue();
+            case MULTI_LINE_BASIC_STRING:
+                return token.getValue().replaceAll("\\\\r?\\n[ \t\n]*", "");
             case BOOLEAN:
                 return Boolean.parseBoolean(token.getValue());
             case INTEGER:
@@ -222,10 +225,8 @@ public class TomlParser {
 
         TomlToken token = getCurrentToken();
 
-        while (true) {
-            if (token.getType() == TomlTokenType.BRACKET_END) {
-                break;
-            } else if (token.getType() == TomlTokenType.COMMA) {
+        while (token.getType() != TomlTokenType.BRACKET_END) {
+            if (token.getType() == TomlTokenType.COMMA) {
                 if (commaFound) {
                     throw new IllegalStateException("Comma occurs several times in a row.");
                 }

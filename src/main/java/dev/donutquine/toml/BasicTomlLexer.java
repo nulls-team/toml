@@ -23,9 +23,6 @@ public class BasicTomlLexer implements TomlLexer {
     private static final char EQUALS = '=';
     private static final char COMMA = ',';
     private static final char PERIOD = '.';
-    private static final char PLUS_SIGN = '+';
-    private static final char MINUS_SIGN = '-';
-    private static final char UNDERSCORE = '_';
 
     /* language=RegExp */
     @SuppressWarnings("RegExpUnnecessaryNonCapturingGroup")
@@ -98,7 +95,7 @@ public class BasicTomlLexer implements TomlLexer {
             readWhitespace(buffer);
 
             tokenType = TomlTokenType.WHITESPACE;
-        } else if (current == NEWLINE || current == '\r' && nextChar() == NEWLINE) {
+        } else if (tryMatchRegex("\r?\n") != null) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.NEWLINE;
             valueRequired = false;
@@ -131,19 +128,24 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == BRACE_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACE_END;
-        } else if (current == BASIC_STRING_QUOTE) {
-            nextBasicString(buffer);
-            tokenType = TomlTokenType.BASIC_STRING;
-        } else if (current == LITERAL_STRING_QUOTE) {
-            nextLiteralString(buffer);
-            tokenType = TomlTokenType.LITERAL_STRING;
-            valueRequired = false;
         } else if (valueRequired || arrayValueRequired) {
             if (current == BRACE_START) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_START;
+            } else if (tryMatchRegex(BASIC_STRING_QUOTE + "{3}") != null) {
+                readMultilineBasicString(buffer);
+                tokenType = TomlTokenType.MULTI_LINE_BASIC_STRING;
+            } else if (tryMatchRegex(LITERAL_STRING_QUOTE + "{3}") != null) {
+                readMultilineLiteralString(buffer);
+                tokenType = TomlTokenType.MULTI_LINE_LITERAL_STRING;
+            } else if (current == BASIC_STRING_QUOTE) {
+                readBasicString(buffer);
+                tokenType = TomlTokenType.BASIC_STRING;
+            } else if (current == LITERAL_STRING_QUOTE) {
+                readLiteralString(buffer);
+                tokenType = TomlTokenType.LITERAL_STRING;
             } else {
-                LexemeRegexMatchResult matchResult = nextRegexMatch(
+                LexemeRegexMatchResult matchResult = getNextRegexMatch(
                     new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),
                     new LexemeRegex(INTEGER_REGEX, TomlTokenType.INTEGER),
                     new LexemeRegex(HEX_INTEGER_REGEX, TomlTokenType.HEX_INTEGER),
@@ -160,6 +162,14 @@ public class BasicTomlLexer implements TomlLexer {
             }
 
             valueRequired = false;
+        } else if (current == BASIC_STRING_QUOTE) {
+            readBasicString(buffer);
+            tokenType = TomlTokenType.BASIC_STRING;
+            valueRequired = false;
+        } else if (current == LITERAL_STRING_QUOTE) {
+            readLiteralString(buffer);
+            tokenType = TomlTokenType.LITERAL_STRING;
+            valueRequired = false;
         } else if (CharsetValidator.isUnquotedKeyChar(current)) {
             readUnquotedKey(buffer);
             tokenType = TomlTokenType.IDENT;
@@ -174,9 +184,9 @@ public class BasicTomlLexer implements TomlLexer {
         return new TomlToken(tokenType, new Location(startLine, startColumn), new Location(line, column), value);
     }
 
-    private LexemeRegexMatchResult nextRegexMatch(LexemeRegex... lexemeRegexps) {
+    private LexemeRegexMatchResult getNextRegexMatch(LexemeRegex... lexemeRegexps) {
         for (LexemeRegex lexeme : lexemeRegexps) {
-            String match = getRegexMatch(lexeme.regex);
+            String match = tryMatchRegex(lexeme.regex);
             if (match != null) {
                 return new LexemeRegexMatchResult(match, lexeme.type);
             }
@@ -208,8 +218,11 @@ public class BasicTomlLexer implements TomlLexer {
         }
     }
 
-    private void nextBasicString(StringBuilder buffer) {
-        readChar(); // consume "
+    private void readBasicString(StringBuilder buffer) {
+        skip(1);  // consume quote
+
+        int startPosition = position;
+        int length = 0;
 
         boolean escaped = false;
 
@@ -217,36 +230,144 @@ public class BasicTomlLexer implements TomlLexer {
             int character = peekChar();
 
             if (character == BASIC_STRING_QUOTE && !escaped) {
+                buffer.append(string, startPosition, startPosition + length);
+                skip(1);  // consume quote
+                return;
+            }
+
+            escaped = character == ESCAPE_CHAR;
+
+            readChar();
+            length++;
+        }
+
+        // end quote not found
+    }
+
+    private void readMultilineBasicString(StringBuilder buffer) {
+        skip(3);  // consume quotes
+
+        int startPosition = position;
+        int length = 0;
+
+        boolean escaped = false;
+        int quoteCount = 0;
+
+        while (position < string.length()) {
+            int character = readChar();
+
+            length++;
+
+            if (character == BASIC_STRING_QUOTE & !escaped) {
+                quoteCount++;
+
+                if (quoteCount == 3) {
+                    break;
+                }
+            } else {
+                quoteCount = 0;
+            }
+
+            escaped = character == ESCAPE_CHAR;
+        }
+
+        if (quoteCount < 3) {
+            // end quotes not found
+            return;
+        }
+
+        while (position < string.length()) {
+            int character = peekChar();
+
+            if (character == BASIC_STRING_QUOTE) {
+                quoteCount++;
+                length++;
+            } else {
                 break;
             }
 
-            buffer.append((char) readChar());
-
-            if (character == '\\') {
-                escaped = true;
-                continue;
-            }
-
-            escaped = false;
+            readChar();
         }
 
-        readChar(); // consume "
+        if (quoteCount > 5) {
+            // wrong branch, too much quotes
+            return;
+        }
+
+        buffer.append(string, startPosition, startPosition + length - 3);
     }
 
-    private void nextLiteralString(StringBuilder buffer) {
-        readChar(); // consume '
+    private void readLiteralString(StringBuilder buffer) {
+        skip(1);  // consume apostrophe
+
+        int startPosition = position;
+        int length = 0;
 
         while (position < string.length()) {
             int character = peekChar();
 
             if (character == LITERAL_STRING_QUOTE) {
+                buffer.append(string, startPosition, startPosition + length);
+                skip(1);  // consume apostrophe
+                return;
+            }
+
+            readChar();
+            length++;
+        }
+
+        // end apostrophe not found
+    }
+
+    private void readMultilineLiteralString(StringBuilder buffer) {
+        int startPosition = position;
+        int length = 0;
+
+        int quoteCount = 0;
+
+        while (position < string.length()) {
+            int character = peekChar();
+
+            length++;
+
+            if (character == LITERAL_STRING_QUOTE) {
+                quoteCount++;
+
+                if (quoteCount == 3) {
+                    break;
+                }
+            } else {
+                quoteCount = 0;
+            }
+
+            readChar();
+        }
+
+        if (quoteCount < 3) {
+            // end apostrophes not found
+            return;
+        }
+
+        while (position < string.length()) {
+            int character = peekChar();
+
+            if (character == '"') {
+                quoteCount++;
+                length++;
+            } else {
                 break;
             }
 
-            buffer.append((char) readChar());
+            readChar();
         }
 
-        readChar(); // consume '
+        if (quoteCount >= 5) {
+            // wrong branch, too much quotes
+            return;
+        }
+
+        // consume apostrophes
+        buffer.append(string, startPosition, startPosition + length - 3);
     }
 
     private void readUntil(StringBuilder buffer, char until) {
@@ -310,7 +431,7 @@ public class BasicTomlLexer implements TomlLexer {
         }
     }
 
-    private String getRegexMatch(String regex) {
+    private String tryMatchRegex(String regex) {
         Pattern pattern = Pattern.compile("^(" + regex + ")");
 
         Matcher matcher = pattern.matcher(string);
