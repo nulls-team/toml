@@ -60,7 +60,7 @@ public class BasicTomlLexer implements TomlLexer {
     private int position;
     private int line, column;
 
-    private boolean valueRequired;
+    private boolean valueRequired, arrayValueRequired;
 
     public BasicTomlLexer(String toml) {
         this.string = toml;
@@ -121,11 +121,13 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == BRACKET_START) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_START;
+            arrayValueRequired = true;
             valueRequired = false;
         } else if (current == BRACKET_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_END;
             valueRequired = false;
+            arrayValueRequired = false;
         } else if (current == BRACE_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACE_END;
@@ -136,7 +138,7 @@ public class BasicTomlLexer implements TomlLexer {
             nextLiteralString(buffer);
             tokenType = TomlTokenType.LITERAL_STRING;
             valueRequired = false;
-        } else if (valueRequired) {
+        } else if (valueRequired || arrayValueRequired) {
             if (current == BRACE_START) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_START;

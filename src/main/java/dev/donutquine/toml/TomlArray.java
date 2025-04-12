@@ -80,6 +80,11 @@ public class TomlArray implements ArrayValueAccessor, ArrayValueMutator {
     }
 
     @Override
+    public void addObject(Object value) {
+        values.add(value);
+    }
+
+    @Override
     public String toString() {
         StringBuilder result = new StringBuilder();
         result.append("[");

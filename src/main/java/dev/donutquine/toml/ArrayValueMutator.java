@@ -20,4 +20,6 @@ public interface ArrayValueMutator {
     void addArray(TomlArray value);
 
     void addTable(TomlTable value);
+
+    void addObject(Object value);
 }

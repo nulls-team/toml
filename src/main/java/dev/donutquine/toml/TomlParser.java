@@ -13,7 +13,7 @@ public class TomlParser {
 
     private Iterator<TomlToken> iterator;
 
-    private TomlToken unhandledToken;
+    private TomlToken currentToken;
 
     public TomlParser(String toml) {
         this(DEFAULT_LEXER.apply(toml));
@@ -28,23 +28,28 @@ public class TomlParser {
 
         Iterable<TomlToken> tokens = lexer.tokenize();
         iterator = tokens.iterator();
-        while (iterator.hasNext()) {
-            TomlToken token = iterator.next();
 
+        TomlToken token = getNextToken();
+        while (token != null) {
             if (isTable(token.getType())) {
                 parseTableDeclaration(toml);
             } else if (isKey(token.getType())) {
-                parseKeyValuePair(toml.getCurrentTable(), token);
-            } else if (token.getType() != TomlTokenType.COMMENT && token.getType() != TomlTokenType.NEWLINE) {
+                parseKeyValuePair(toml.getCurrentTable());
+            } else if (!isSkippableToken(token)) {
                 throw new IllegalStateException("Unexpected token type: " + token.getType());
             }
+
+            token = getNextToken();
         }
 
         return toml;
     }
 
-    private void parseKeyValuePair(TomlTable currentTable, TomlToken keyToken) {
-        List<String> keyPath = new ArrayList<>(tryParseKey(keyToken));
+    private void parseKeyValuePair(TomlTable currentTable) {
+        List<String> keyPath = new ArrayList<>(tryParseKey());
+        if (keyPath.isEmpty()) {
+            throw new IllegalStateException("Key path was expected, but not found");
+        }
 
         String key = keyPath.remove(keyPath.size() - 1);
 
@@ -53,7 +58,7 @@ public class TomlParser {
             table = table.computeIfAbsent(tableKey, (k) -> new BasicTomlTable());
         }
 
-        TomlToken equalsToken = unhandledToken;
+        TomlToken equalsToken = getCurrentToken();
         if (equalsToken.getType() == TomlTokenType.EQUALS) {
             Object value = parseValue();
             if (value != null) {
@@ -67,42 +72,34 @@ public class TomlParser {
     }
 
     private void parseTableDeclaration(Toml toml) {
-        if (!iterator.hasNext()) {
+        boolean isArray = false;
+
+        TomlToken token = getNextToken();
+        if (token == null) {
             throw new IllegalStateException("Unexpected end of file");
         }
 
-        boolean isArray = false;
-
-        TomlToken token = iterator.next();
-
         if (token.getType() == TomlTokenType.BRACKET_START) {
             isArray = true;
-
-            if (iterator.hasNext()) {
-                token = iterator.next();
-            } else {
-                throw new IllegalStateException("Unexpected end of file");
-            }
         }
 
-        List<String> keyPath = new ArrayList<>(tryParseKey(token));
+        List<String> keyPath = new ArrayList<>(tryParseKey());
         if (keyPath.isEmpty()) {
             throw new IllegalStateException("Key path was expected, but not found");
         }
 
-        if (unhandledToken.getType() != TomlTokenType.BRACKET_END) {
-            throw new IllegalStateException("Unexpected token: " + unhandledToken);
+        if (currentToken.getType() != TomlTokenType.BRACKET_END) {
+            throw new IllegalStateException("Unexpected token: " + currentToken);
         }
 
         if (isArray) {
-            if (!iterator.hasNext()) {
+            token = getNextToken();
+            if (token == null) {
                 throw new IllegalStateException("Unexpected end of file");
             }
 
-            token = iterator.next();
-
             if (token.getType() != TomlTokenType.BRACKET_END) {
-                throw new IllegalStateException("Unexpected token: " + unhandledToken);
+                throw new IllegalStateException("Unexpected token: " + currentToken);
             }
 
             String arrayKey = keyPath.remove(keyPath.size() - 1);
@@ -125,84 +122,131 @@ public class TomlParser {
         }
     }
 
-    private List<String> tryParseKey(TomlToken keyToken) {
+    private List<String> tryParseKey() {
         List<String> keys = new ArrayList<>();
 
+        TomlToken token = getCurrentToken();
         while (true) {
+            while (isSkippableToken(token)) {
+                token = getNextToken();
+                if (token == null) {
+                    return keys;
+                }
+            };
+
             // Dotted key
-            if (keyToken.getType() == TomlTokenType.PERIOD) {
-                if (iterator.hasNext()) {
-                    keyToken = iterator.next();
-                    if (!isKey(keyToken.getType())) {
-                        throw new IllegalStateException("Key token was expected, but received " + keyToken);
+            if (token.getType() == TomlTokenType.PERIOD) {
+                token = getNextToken();
+                if (token != null) {
+                    if (!isKey(token.getType())) {
+                        throw new IllegalStateException("Key token was expected, but received " + token);
                     }
 
-                    keys.add(keyToken.getValue());
+                    keys.add(token.getValue());
                 } else {
                     throw new IllegalStateException("Key token was expected, but received nothing");
                 }
-            } else if (isKey(keyToken.getType())) {
+            } else if (isKey(token.getType())) {
                 if (keys.isEmpty()) {
-                    keys.add(keyToken.getValue());
+                    keys.add(token.getValue());
                 } else {
-                    throw new IllegalStateException("Key token wasn't expected, but received " + keyToken);
+                    throw new IllegalStateException("Key token wasn't expected, but received " + token);
                 }
-            } else if (keyToken.getType() != TomlTokenType.WHITESPACE) {
-                this.unhandledToken = keyToken;
-                break;
-            }
-
-            if (iterator.hasNext()) {
-                keyToken = iterator.next();
             } else {
                 break;
             }
+
+            token = getNextToken();
         }
 
         return keys;
     }
 
     private Object parseValue() {
-        if (!iterator.hasNext()) {
-            return null;
-        }
-
-        TomlToken valueToken = iterator.next();
-        while (valueToken.getType() == TomlTokenType.WHITESPACE) {
-            if (!iterator.hasNext()) {
+        TomlToken token;
+        do {
+            token = getNextToken();
+            if (token == null) {
                 return null;
             }
+        } while (isSkippableToken(token));
 
-            valueToken = iterator.next();
-        }
-
-        switch (valueToken.getType()) {
+        switch (token.getType()) {
             case BASIC_STRING:
             case LITERAL_STRING:
-                return valueToken.getValue();
+                return token.getValue();
             case BOOLEAN:
-                return Boolean.parseBoolean(valueToken.getValue());
+                return Boolean.parseBoolean(token.getValue());
             case INTEGER:
-                return Integer.parseInt(valueToken.getValue().replaceAll("_", ""));
+                return Integer.parseInt(token.getValue().replaceAll("_", ""));
             case HEX_INTEGER:
-                return Integer.parseInt(valueToken.getValue().replaceAll("(^0x|_)", ""), 16);
+                return Integer.parseInt(token.getValue().replaceAll("(^0x|_)", ""), 16);
             case OCT_INTEGER:
-                return Integer.parseInt(valueToken.getValue().replaceAll("(^0o|_)", ""), 8);
+                return Integer.parseInt(token.getValue().replaceAll("(^0o|_)", ""), 8);
             case BIN_INTEGER:
-                return Integer.parseInt(valueToken.getValue().replaceAll("(^0b|_)", ""), 2);
+                return Integer.parseInt(token.getValue().replaceAll("(^0b|_)", ""), 2);
             case FLOAT:
-                if (valueToken.getValue().equals("nan")) {
+                if (token.getValue().equals("nan")) {
                     return Float.NaN;
-                } else if (valueToken.getValue().equals("inf")) {
+                } else if (token.getValue().equals("inf")) {
                     return Float.POSITIVE_INFINITY;
                 }
 
-                return Float.parseFloat(valueToken.getValue());
+                return Float.parseFloat(token.getValue());
             case BRACE_START:
                 return parseInlineTable();
+            case BRACKET_START:
+                return parseArray();
         }
 
         return null;
+    }
+
+    private static boolean isSkippableToken(TomlToken token) {
+        return token.getType() == TomlTokenType.WHITESPACE || token.getType() == TomlTokenType.COMMENT || token.getType() == TomlTokenType.NEWLINE;
+    }
+
+    private TomlToken getCurrentToken() {
+        return currentToken;
+    }
+
+    private TomlToken getNextToken() {
+        return currentToken = iterator.hasNext() ? iterator.next() : null;
+    }
+
+    private TomlArray parseArray() {
+        TomlArray array = new TomlArray();
+
+        boolean commaFound = false;
+
+
+        TomlToken token = getCurrentToken();
+
+        while (true) {
+            if (token.getType() == TomlTokenType.BRACKET_END) {
+                break;
+            } else if (token.getType() == TomlTokenType.COMMA) {
+                if (commaFound) {
+                    throw new IllegalStateException("Comma occurs several times in a row.");
+                }
+
+                commaFound = true;
+            } else {
+                commaFound = false;
+            }
+
+            Object value = parseValue();
+            if (value != null) {
+                array.addObject(value);
+            }
+
+            token = getNextToken();
+            if (token == null) {
+                return null;
+            }
+        }
+
+        return array;
     }
 
     private TomlTable parseInlineTable() {
@@ -210,15 +254,14 @@ public class TomlParser {
 
         boolean commaFound = false;
 
-        TomlToken token = iterator.next();
         while (true) {
-            while (token.getType() == TomlTokenType.WHITESPACE || token.getType() == TomlTokenType.COMMENT || token.getType() == TomlTokenType.NEWLINE) {
-                if (!iterator.hasNext()) {
+            TomlToken token;
+            do {
+                token = getNextToken();
+                if (token == null) {
                     return null;
                 }
-
-                token = iterator.next();
-            }
+            } while (isSkippableToken(token));
 
             if (token.getType() == TomlTokenType.BRACE_END) {
                 if (commaFound) {
@@ -233,15 +276,9 @@ public class TomlParser {
 
                 commaFound = true;
             } else {
-                parseKeyValuePair(table, token);
+                parseKeyValuePair(table);
                 commaFound = false;
             }
-
-            if (!iterator.hasNext()) {
-                return null;
-            }
-
-            token = iterator.next();
         }
 
         return table;
