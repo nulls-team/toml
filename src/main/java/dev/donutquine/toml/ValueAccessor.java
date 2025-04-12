@@ -22,4 +22,8 @@ public interface ValueAccessor {
     TomlTable getTable(String key);
 
     <T> T getAs(String key, Class<T> type);
+
+    boolean has(String key);
+
+    boolean isEmpty();
 }

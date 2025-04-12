@@ -59,6 +59,16 @@ public class BasicTomlTable implements TomlTable {
     }
 
     @Override
+    public boolean has(String key) {
+        return values.containsKey(key);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return values.isEmpty();
+    }
+
+    @Override
     public <T> T computeIfAbsent(String key, Function<String, T> valueFunction) {
         //noinspection unchecked
         return (T) values.computeIfAbsent(key, valueFunction);

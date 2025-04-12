@@ -1,9 +1,8 @@
 package dev.donutquine.toml;
 
-import dev.donutquine.toml.exceptions.TomlException;
-
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.Function;
 
 public class TomlParser {
@@ -23,7 +22,7 @@ public class TomlParser {
         this.lexer = lexer;
     }
 
-    public Toml parse() throws IOException, TomlException {
+    public Toml parse() {
         Toml toml = new Toml();
 
         Iterable<TomlToken> tokens = lexer.tokenize();
@@ -136,16 +135,18 @@ public class TomlParser {
 
             // Dotted key
             if (token.getType() == TomlTokenType.PERIOD) {
-                token = getNextToken();
-                if (token != null) {
-                    if (!isKey(token.getType())) {
-                        throw new IllegalStateException("Key token was expected, but received " + token);
+                do {
+                    token = getNextToken();
+                    if (token == null) {
+                        throw new IllegalStateException("Key token was expected, but received nothing");
                     }
+                } while (isSkippableToken(token));
 
-                    keys.add(token.getValue());
-                } else {
-                    throw new IllegalStateException("Key token was expected, but received nothing");
+                if (!isKey(token.getType())) {
+                    throw new IllegalStateException("Key token was expected, but received " + token);
                 }
+
+                keys.add(token.getValue());
             } else if (isKey(token.getType())) {
                 if (keys.isEmpty()) {
                     keys.add(token.getValue());

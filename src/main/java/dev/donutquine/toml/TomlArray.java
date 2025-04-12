@@ -45,6 +45,16 @@ public class TomlArray implements ArrayValueAccessor, ArrayValueMutator {
     }
 
     @Override
+    public int getSize() {
+        return values.size();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return values.isEmpty();
+    }
+
+    @Override
     public void addString(String value) {
         values.add(value);
     }

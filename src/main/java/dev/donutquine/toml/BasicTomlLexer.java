@@ -1,7 +1,5 @@
 package dev.donutquine.toml;
 
-import dev.donutquine.toml.exceptions.TomlException;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -64,7 +62,7 @@ public class BasicTomlLexer implements TomlLexer {
     }
 
     @Override
-    public Iterable<TomlToken> tokenize() throws TomlException {
+    public Iterable<TomlToken> tokenize() {
         List<TomlToken> tokens = new ArrayList<>();
 
         while (true) {
@@ -79,7 +77,7 @@ public class BasicTomlLexer implements TomlLexer {
         return tokens;
     }
 
-    private TomlToken next() throws TomlException {
+    private TomlToken next() {
         if (position >= string.length()) {
             return null;
         }

@@ -20,4 +20,8 @@ public interface ArrayValueAccessor {
     TomlArray getArray(int key);
 
     TomlTable getTable(int key);
+
+    int getSize();
+
+    boolean isEmpty();
 }
