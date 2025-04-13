@@ -82,6 +82,7 @@ public class TomlParser {
 
         if (token.getType() == TomlTokenType.BRACKET_START) {
             isArray = true;
+            getNextToken();
         }
 
         List<String> keyPath = new ArrayList<>(tryParseKey());
