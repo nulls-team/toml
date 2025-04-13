@@ -4,44 +4,58 @@ import dev.donutquine.toml.util.StringEscaper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 // TODO: maybe usage of generic ValueAccessor will be better (like ValueAccessor<Integer>)
 public class TomlArray implements ArrayValueAccessor, ArrayValueMutator {
     private final List<Object> values = new ArrayList<>();
 
     @Override
-    public String getString(int key) {
-        return (String) values.get(key);
+    public String getString(int index) {
+        return getAs(index, String.class);
     }
 
     @Override
-    public int getInteger(int key) {
-        return (int) values.get(key);
+    public int getInteger(int index) {
+        return getAs(index, Integer.class);
     }
 
     @Override
-    public long getLong(int key) {
-        return (long) values.get(key);
+    public long getLong(int index) {
+        return getAs(index, Long.class);
     }
 
     @Override
-    public float getFloat(int key) {
-        return (float) values.get(key);
+    public float getFloat(int index) {
+        return getAs(index, Float.class);
     }
 
     @Override
-    public boolean getBoolean(int key) {
-        return (boolean) values.get(key);
+    public boolean getBoolean(int index) {
+        return getAs(index, Boolean.class);
     }
 
     @Override
-    public TomlArray getArray(int key) {
-        return (TomlArray) values.get(key);
+    public TomlArray getArray(int index) {
+        return getAs(index, TomlArray.class);
     }
 
     @Override
-    public TomlTable getTable(int key) {
-        return (TomlTable) values.get(key);
+    public TomlTable getTable(int index) {
+        return getAs(index, TomlTable.class);
+    }
+
+    @Override
+    public <T> T getAs(int index, Class<T> type) {
+        Objects.checkIndex(index, values.size());
+
+        Object value = values.get(index);
+        if (type.isInstance(value)) {
+            //noinspection unchecked
+            return (T) value;
+        }
+
+        throw new IllegalArgumentException(value.getClass().getSimpleName() + " cannot be casted to " + type.getSimpleName());
     }
 
     @Override

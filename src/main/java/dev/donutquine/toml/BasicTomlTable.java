@@ -13,41 +13,75 @@ public class BasicTomlTable implements TomlTable {
 
     @Override
     public String getString(String key) {
-        return (String) values.get(key);
+        return getAs(key, null, String.class);
     }
 
     @Override
     public int getInteger(String key) {
-        return (int) values.get(key);
+        return getInteger(key, 0);
+    }
+
+    @Override
+    public int getInteger(String key, int defaultValue) {
+        return getAsOrThrow(key, getAs(key, defaultValue, Integer.class), Integer.class);
     }
 
     @Override
     public long getLong(String key) {
-        return (long) values.get(key);
+        return getLong(key, 0L);
+    }
+
+    @Override
+    public long getLong(String key, long defaultValue) {
+        Integer integer = getAs(key, null, Integer.class);
+        if (integer == null) {
+            return getAsOrThrow(key, getAs(key, defaultValue, Long.class), Long.class);
+        }
+
+        return integer;
     }
 
     @Override
     public float getFloat(String key) {
-        return (float) values.get(key);
+        return getFloat(key, 0);
+    }
+
+    @Override
+    public float getFloat(String key, float defaultValue) {
+        return getAsOrThrow(key, getAs(key, defaultValue, Float.class), Float.class);
     }
 
     @Override
     public boolean getBoolean(String key) {
-        return (boolean) values.get(key);
+        return getBoolean(key, false);
+    }
+
+    @Override
+    public boolean getBoolean(String key, boolean defaultValue) {
+        return getAsOrThrow(key, getAs(key, defaultValue, Boolean.class), Boolean.class);
     }
 
     @Override
     public TomlArray getArray(String key) {
-        return (TomlArray) values.get(key);
+        return getAs(key, TomlArray.class);
     }
 
     @Override
     public TomlTable getTable(String key) {
-        return (TomlTable) values.get(key);
+        return getAs(key, TomlTable.class);
     }
 
     @Override
     public <T> T getAs(String key, Class<T> type) {
+        return getAs(key, null, type);
+    }
+
+    @Override
+    public <T> T getAs(String key, T defaultValue, Class<T> type) {
+        if (!values.containsKey(key)) {
+            return defaultValue;
+        }
+
         Object value = values.get(key);
         if (type.isInstance(value)) {
             //noinspection unchecked
@@ -149,5 +183,13 @@ public class BasicTomlTable implements TomlTable {
 
         result.append("}");
         return result.toString();
+    }
+
+    private static <T> T getAsOrThrow(String key, T value, Class<T> type) {
+        if (value == null) {
+            throw new IllegalArgumentException(StringEscaper.escape(key) + " value cannot be casted to " + type.getSimpleName());
+        }
+
+        return value;
     }
 }

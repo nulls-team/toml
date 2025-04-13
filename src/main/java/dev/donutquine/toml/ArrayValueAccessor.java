@@ -1,15 +1,16 @@
 package dev.donutquine.toml;
 
+@SuppressWarnings("unused")
 public interface ArrayValueAccessor {
-    String getString(int key);
+    String getString(int index);
 
-    int getInteger(int key);
+    int getInteger(int index);
 
-    long getLong(int key);
+    long getLong(int index);
 
-    float getFloat(int key);
+    float getFloat(int index);
 
-    boolean getBoolean(int key);
+    boolean getBoolean(int index);
 
     // TODO:
     // Offset Date-Time
@@ -17,9 +18,11 @@ public interface ArrayValueAccessor {
     // Local Date
     // Local Time
 
-    TomlArray getArray(int key);
+    TomlArray getArray(int index);
 
-    TomlTable getTable(int key);
+    TomlTable getTable(int index);
+    
+    <T> T getAs(int index, Class<T> type);
 
     int getSize();
 
