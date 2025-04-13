@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "dev.donutquine"
-version = "0.0.7"
+version = "0.0.8"
 
 repositories {
     mavenCentral()
@@ -25,8 +25,8 @@ publishing {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/nulls-team/toml")
             credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-                password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+                username = project.findProperty("gpr.user") as String? ?: System.getenv("GITHUB_USERNAME")
+                password = project.findProperty("gpr.key") as String? ?: System.getenv("GITHUB_TOKEN")
             }
         }
     }
