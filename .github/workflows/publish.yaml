@@ -1,8 +1,9 @@
 name: Publish to GitHub Packages
 
 on:
-  release:
-    types: [ published ]
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
   build-and-publish-github-packages:
@@ -25,6 +26,9 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
+
+      - name: Set release version from tag
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/v}" >> $GITHUB_ENV
 
       - name: Publish to Github Packages
         run: ./gradlew test -DGITHUB_USERNAME=${{ github.actor }} -DGITHUB_TOKEN=${{ github.token }} publish
