@@ -2,15 +2,14 @@ package dev.donutquine.toml;
 
 import dev.donutquine.toml.util.StringEscaper;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 // TODO: maybe add InlineTomlTable
 public class BasicTomlTable implements TomlTable {
     // TODO: Maybe use something like TomlValue<?>?
     private final Map<String, Object> values = new HashMap<>();
+    private final List<String> keys = new ArrayList<>();
 
     @Override
     public String getString(String key) {
@@ -59,6 +58,11 @@ public class BasicTomlTable implements TomlTable {
     }
 
     @Override
+    public List<String> getKeys() {
+        return Collections.unmodifiableList(keys);
+    }
+
+    @Override
     public boolean has(String key) {
         return values.containsKey(key);
     }
@@ -70,47 +74,55 @@ public class BasicTomlTable implements TomlTable {
 
     @Override
     public <T> T computeIfAbsent(String key, Function<String, T> valueFunction) {
+        if (!values.containsKey(key)) {
+            keys.add(key);
+        }
+
         //noinspection unchecked
         return (T) values.computeIfAbsent(key, valueFunction);
     }
 
     @Override
     public void setString(String key, String value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setInteger(String key, int value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setLong(String key, long value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setFloat(String key, float value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setBoolean(String key, boolean value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setArray(String key, TomlArray value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setTable(String key, TomlTable value) {
-        values.put(key, value);
+        setObject(key, value);
     }
 
     @Override
     public void setObject(String key, Object value) {
+        if (!values.containsKey(key)) {
+            keys.add(key);
+        }
+
         values.put(key, value);
     }
 
@@ -119,18 +131,19 @@ public class BasicTomlTable implements TomlTable {
         StringBuilder result = new StringBuilder();
         result.append("{");
 
-        for (Iterator<Map.Entry<String, Object>> iterator = values.entrySet().iterator(); iterator.hasNext(); ) {
-            Map.Entry<String, Object> entry = iterator.next();
-            Object value = entry.getValue();
+        for (int i = 0; i < keys.size(); i++) {
+            String key = keys.get(i);
+            Object value = values.get(key);
+
             String valueString = value.toString();
             if (value instanceof String) {
                 valueString = '"' + StringEscaper.escape(valueString) + '"';
             }
 
-            result.append(entry.getKey()).append("=").append(valueString);
+            result.append(key).append("=").append(valueString);
 
-            if (iterator.hasNext()) {
-                result.append(',');
+            if (i < keys.size() - 1) {
+                result.append(", ");
             }
         }
 

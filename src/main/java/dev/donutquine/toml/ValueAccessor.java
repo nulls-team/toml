@@ -1,5 +1,7 @@
 package dev.donutquine.toml;
 
+import java.util.List;
+
 public interface ValueAccessor {
     String getString(String key);
 
@@ -22,6 +24,8 @@ public interface ValueAccessor {
     TomlTable getTable(String key);
 
     <T> T getAs(String key, Class<T> type);
+
+    List<String> getKeys();
 
     boolean has(String key);
 
