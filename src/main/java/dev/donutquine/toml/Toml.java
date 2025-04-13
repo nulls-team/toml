@@ -5,25 +5,27 @@ public class Toml {
 
     private TomlTable currentTable = rootTable;
 
-    public void setCurrentTableByPath(String... tableName) {
+    public TomlTable findTableByPath(Iterable<String> tablePath) {
         TomlTable table = rootTable;
-        for (String key : tableName) {
-            table = table.computeIfAbsent(key, (k) -> new BasicTomlTable());
+        for (String key : tablePath) {
+            TomlArray array = table.getArray(key);
+            if (array != null) {
+                // Note: array size is 1 at least if array exists
+                table = array.getTable(array.getSize() - 1);
+            } else {
+                table = table.computeIfAbsent(key, (k) -> new BasicTomlTable());
+            }
         }
 
-        this.currentTable = table;
-    }
-
-    public void setCurrentTable(TomlTable table) {
-        this.currentTable = table;
-    }
-
-    public TomlTable getTable(String tableName) {
-        return rootTable.getTable(tableName);
+        return table;
     }
 
     public TomlTable getRootTable() {
         return rootTable;
+    }
+
+    public void setCurrentTable(TomlTable table) {
+        this.currentTable = table;
     }
 
     TomlTable getCurrentTable() {

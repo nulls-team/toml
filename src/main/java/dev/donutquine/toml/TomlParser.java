@@ -106,10 +106,7 @@ public class TomlParser {
 
             String arrayKey = keyPath.remove(keyPath.size() - 1);
 
-            TomlTable table = toml.getCurrentTable();
-            for (String tableKey : keyPath) {
-                table = table.computeIfAbsent(tableKey, (k) -> new BasicTomlTable());
-            }
+            TomlTable table = toml.findTableByPath(keyPath);
 
             TomlArray array = table.computeIfAbsent(arrayKey, (k) -> new TomlArray());
             if (array != null) {
@@ -120,7 +117,7 @@ public class TomlParser {
                 throw new IllegalStateException("Array not found");
             }
         } else {
-            toml.setCurrentTableByPath(keyPath.toArray(String[]::new));
+            toml.setCurrentTable(toml.findTableByPath(keyPath));
         }
     }
 
