@@ -1,7 +1,10 @@
 package dev.donutquine.toml.util;
 
+import dev.donutquine.toml.ArrayValueAccessor;
 import dev.donutquine.toml.TomlTable;
 import dev.donutquine.toml.ValueAccessor;
+
+import java.lang.reflect.Array;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -55,6 +58,15 @@ public class Assertions {
 
         //noinspection unchecked
         return (T) value;
+    }
+
+    public static <T> T[] assertArrayValueEquals(ArrayValueAccessor accessor, T[] expected, Class<T> type) {
+        @SuppressWarnings("unchecked") T[] result = (T[]) Array.newInstance(type, accessor.getSize());
+        for (int i = 0; i < accessor.getSize(); i++) {
+            result[i] = accessor.getAs(i, type);
+        }
+        assertArrayEquals(result, expected);
+        return result;
     }
 
     public static ValueAccessor assertTableExists(ValueAccessor table, String key) {
