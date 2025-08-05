@@ -250,6 +250,12 @@ public class TomlParser {
                 throw new IllegalStateException("Unexpected token: " + token);
             }
 
+            // Special case for empty arrays (like []), TODO: it might be better to rewrite this
+            TomlToken previousToken = getCurrentToken();
+            if (isFirst && previousToken != null && previousToken.getType() == TomlTokenType.BRACKET_END) {
+                break;
+            }
+
             do {
                 token = getNextToken();
                 if (token == null) {

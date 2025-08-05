@@ -97,7 +97,7 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (tryMatchRegex("\r?\n") != null) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.NEWLINE;
-            valueRequired = false;
+            valueRequired &= (arrayIndex > 0);
         } else if (current == COMMENT_START_SYMBOL) {
             buffer.append((char) readChar());
             readUntil(buffer, NEWLINE);
@@ -120,10 +120,7 @@ public class BasicTomlLexer implements TomlLexer {
             if (valueRequired) {
                 arrayIndex++;
             }
-
-            if (arrayIndex == 0) {
-                valueRequired = false;
-            }
+            valueRequired &= (arrayIndex > 0);
         } else if (current == BRACKET_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_END;
@@ -170,7 +167,7 @@ public class BasicTomlLexer implements TomlLexer {
                 }
             }
 
-            valueRequired = arrayIndex > 0;
+            valueRequired = (arrayIndex > 0);
         } else if (current == BASIC_STRING_QUOTE) {
             readBasicString(buffer);
             tokenType = TomlTokenType.BASIC_STRING;
