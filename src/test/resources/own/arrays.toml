@@ -7,3 +7,10 @@ matrix = [
     [4, 5, 6],
     [7, 8, 9]
 ]
+
+objects = [
+    { index = 0 },
+    { index = 1 },
+    { index = 2 },
+    { index = 3 }
+]

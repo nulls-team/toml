@@ -1,6 +1,8 @@
 package dev.donutquine.toml;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -55,11 +57,13 @@ public class BasicTomlLexer implements TomlLexer {
     private int position;
     private int line, column;
 
+    private Deque<Context> context;
     private boolean valueRequired;
-    private int arrayIndex = 0;
 
     public BasicTomlLexer(String toml) {
         this.string = toml;
+        // FIXME: Not sure if storing context like this is acceptable in the lexer class (we should merge lexer & parser maybe?)
+        context = new ArrayDeque<>();
     }
 
     @Override
@@ -86,6 +90,8 @@ public class BasicTomlLexer implements TomlLexer {
         int startLine = line;
         int startColumn = column;
         int current = peekChar();
+        boolean isArray = (context.peekFirst() == Context.Array);
+        boolean isInlineObject = (context.peekFirst() == Context.InlineObject);
 
         StringBuilder buffer = new StringBuilder();
         TomlTokenType tokenType = null;
@@ -97,7 +103,7 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (tryMatchRegex("\r?\n") != null) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.NEWLINE;
-            valueRequired &= (arrayIndex > 0);
+            valueRequired &= isArray;
         } else if (current == COMMENT_START_SYMBOL) {
             buffer.append((char) readChar());
             readUntil(buffer, NEWLINE);
@@ -105,9 +111,11 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == COMMA) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.COMMA;
+            valueRequired |= isArray;
         } else if (current == PERIOD) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.PERIOD;
+            // TODO: Not sure why is it here?
             valueRequired = false;
         } else if (current == EQUALS) {
             buffer.append((char) readChar());
@@ -118,26 +126,26 @@ public class BasicTomlLexer implements TomlLexer {
             tokenType = TomlTokenType.BRACKET_START;
             // Note: it is table declaration if valueRequired is false, otherwise an array
             if (valueRequired) {
-                arrayIndex++;
+                context.add(Context.Array);
+                // Note: as we entered the array, valueRequired should be set to true, but it is true already
             }
-            valueRequired &= (arrayIndex > 0);
         } else if (current == BRACKET_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACKET_END;
-            if (valueRequired) {
-                arrayIndex--;
-
-                if (arrayIndex == 0) {
-                    valueRequired = false;
-                }
+            if (isArray) {
+                context.pop(); // Array from the head
             }
         } else if (current == BRACE_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACE_END;
-        } else if (valueRequired || arrayIndex > 0) {
+            if (isInlineObject) {
+                context.pop(); // InlineObject from the head
+            }
+        } else if (valueRequired) {
             if (current == BRACE_START) {
                 buffer.append((char) readChar());
                 tokenType = TomlTokenType.BRACE_START;
+                context.push(Context.InlineObject);
             } else if (tryMatchRegex(BASIC_STRING_QUOTE + "{3}") != null) {
                 readMultilineBasicString(buffer);
                 tokenType = TomlTokenType.MULTI_LINE_BASIC_STRING;
@@ -152,12 +160,12 @@ public class BasicTomlLexer implements TomlLexer {
                 tokenType = TomlTokenType.LITERAL_STRING;
             } else {
                 LexemeRegexMatchResult matchResult = getNextRegexMatch(
-                    new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),
-                    new LexemeRegex(INTEGER_REGEX, TomlTokenType.INTEGER),
-                    new LexemeRegex(HEX_INTEGER_REGEX, TomlTokenType.HEX_INTEGER),
-                    new LexemeRegex(OCT_INTEGER_REGEX, TomlTokenType.OCT_INTEGER),
-                    new LexemeRegex(BIN_INTEGER_REGEX, TomlTokenType.BIN_INTEGER),
-                    new LexemeRegex(BOOLEAN_REGEX, TomlTokenType.BOOLEAN)
+                        new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),
+                        new LexemeRegex(INTEGER_REGEX, TomlTokenType.INTEGER),
+                        new LexemeRegex(HEX_INTEGER_REGEX, TomlTokenType.HEX_INTEGER),
+                        new LexemeRegex(OCT_INTEGER_REGEX, TomlTokenType.OCT_INTEGER),
+                        new LexemeRegex(BIN_INTEGER_REGEX, TomlTokenType.BIN_INTEGER),
+                        new LexemeRegex(BOOLEAN_REGEX, TomlTokenType.BOOLEAN)
                 );
 
                 if (matchResult != null) {
@@ -167,7 +175,7 @@ public class BasicTomlLexer implements TomlLexer {
                 }
             }
 
-            valueRequired = (arrayIndex > 0);
+            valueRequired = false;
         } else if (current == BASIC_STRING_QUOTE) {
             readBasicString(buffer);
             tokenType = TomlTokenType.BASIC_STRING;
@@ -446,6 +454,10 @@ public class BasicTomlLexer implements TomlLexer {
         }
 
         return null;
+    }
+
+    private enum Context {
+        Array, InlineObject
     }
 
     private static class LexemeRegex {

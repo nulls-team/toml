@@ -26,5 +26,14 @@ public class ArraysTest {
             TomlArray row = matrix.getArray(i);
             assertArrayValueEquals(row, expectations[i], Integer.class);
         }
+
+        TomlArray objects = toml.getRootTable().getArray("objects");
+        int[] values = {0, 1, 2, 3};
+        assertEquals(objects.getSize(), values.length);
+        for (int i = 0; i < objects.getSize(); i++) {
+            TomlTable table = objects.getTable(i);
+            assertArrayEquals(table.getKeys().toArray(), new Object[]{"index"});
+            assertEquals(table.getInteger("index"), values[i]);
+        }
     }
 }
