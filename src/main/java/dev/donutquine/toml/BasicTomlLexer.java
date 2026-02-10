@@ -55,7 +55,7 @@ public class BasicTomlLexer implements TomlLexer {
     private final String string;
 
     private int position;
-    private int line, column;
+    private int line = 1, column;
 
     private Deque<Context> context;
     private boolean valueRequired;
@@ -111,7 +111,7 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == COMMA) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.COMMA;
-            valueRequired |= isArray;
+            valueRequired = isArray || isInlineObject;
         } else if (current == PERIOD) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.PERIOD;
@@ -134,12 +134,14 @@ public class BasicTomlLexer implements TomlLexer {
             tokenType = TomlTokenType.BRACKET_END;
             if (isArray) {
                 context.pop(); // Array from the head
+                valueRequired = false;
             }
         } else if (current == BRACE_END) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.BRACE_END;
             if (isInlineObject) {
                 context.pop(); // InlineObject from the head
+                valueRequired = false;
             }
         } else if (valueRequired) {
             if (current == BRACE_START) {
@@ -160,12 +162,12 @@ public class BasicTomlLexer implements TomlLexer {
                 tokenType = TomlTokenType.LITERAL_STRING;
             } else {
                 LexemeRegexMatchResult matchResult = getNextRegexMatch(
-                        new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),
-                        new LexemeRegex(INTEGER_REGEX, TomlTokenType.INTEGER),
-                        new LexemeRegex(HEX_INTEGER_REGEX, TomlTokenType.HEX_INTEGER),
-                        new LexemeRegex(OCT_INTEGER_REGEX, TomlTokenType.OCT_INTEGER),
-                        new LexemeRegex(BIN_INTEGER_REGEX, TomlTokenType.BIN_INTEGER),
-                        new LexemeRegex(BOOLEAN_REGEX, TomlTokenType.BOOLEAN)
+                    new LexemeRegex(FLOAT_REGEX, TomlTokenType.FLOAT),
+                    new LexemeRegex(INTEGER_REGEX, TomlTokenType.INTEGER),
+                    new LexemeRegex(HEX_INTEGER_REGEX, TomlTokenType.HEX_INTEGER),
+                    new LexemeRegex(OCT_INTEGER_REGEX, TomlTokenType.OCT_INTEGER),
+                    new LexemeRegex(BIN_INTEGER_REGEX, TomlTokenType.BIN_INTEGER),
+                    new LexemeRegex(BOOLEAN_REGEX, TomlTokenType.BOOLEAN)
                 );
 
                 if (matchResult != null) {
