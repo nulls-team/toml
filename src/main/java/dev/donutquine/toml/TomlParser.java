@@ -61,6 +61,8 @@ public class TomlParser {
 
         TomlToken equalsToken = getCurrentToken();
         if (equalsToken.getType() == TomlTokenType.EQUALS) {
+            TomlToken _unusedEqualsToken = getNextToken();
+
             Object value = parseValue();
             if (value != null) {
                 table.setObject(key, value);
@@ -164,13 +166,22 @@ public class TomlParser {
     }
 
     private Object parseValue() {
-        TomlToken token;
-        do {
+        TomlToken token = getCurrentToken();
+        while (isSkippableToken(token)) {
             token = getNextToken();
             if (token == null) {
                 return null;
             }
-        } while (isSkippableToken(token));
+        }
+
+        switch (token.getType()) {
+            case BRACE_START:
+                return parseInlineTable();
+            case BRACKET_START:
+                return parseArray();
+        }
+
+        TomlToken _nextToken = getNextToken();  // consume current token
 
         switch (token.getType()) {
             case BASIC_STRING:
@@ -200,10 +211,6 @@ public class TomlParser {
                 }
 
                 return Float.parseFloat(token.getValue());
-            case BRACE_START:
-                return parseInlineTable();
-            case BRACKET_START:
-                return parseArray();
         }
 
         return null;
@@ -224,45 +231,44 @@ public class TomlParser {
     private TomlArray parseArray() {
         TomlArray array = new TomlArray();
 
-        boolean commaFound = false;
-        boolean isFirst = true;
+        boolean valueAcceptable = true;
 
         TomlToken token = getCurrentToken();
+        assert token.getType() == TomlTokenType.BRACKET_START;
 
-        while (token.getType() != TomlTokenType.BRACKET_END) {
-            if (token.getType() == TomlTokenType.COMMA) {
-                if (commaFound) {
+        token = getNextToken();
+
+        while (true) {
+            while (isSkippableToken(token)) {
+                token = getNextToken();
+                if (token == null) {
+                    throw new IllegalStateException("More tokens expected. Array is not finished properly.");
+                }
+            }
+
+            if (token.getType() == TomlTokenType.BRACKET_END) {
+                break;
+            } else if (valueAcceptable) {
+                Object value = parseValue();
+                assert value != null : "Value cannot be parsed";
+
+                array.addObject(value);
+                valueAcceptable = false;
+
+                token = getCurrentToken();
+            } else if (token.getType() == TomlTokenType.COMMA) {
+                if (valueAcceptable) {
                     throw new IllegalStateException("Comma occurs several times in a row.");
                 }
 
-                commaFound = true;
-            }
-
-            if (isFirst || commaFound) {
-                Object value = parseValue();
-                // TODO: log
-                if (value != null) {
-                    array.addObject(value);
-                    commaFound = false;
-                    isFirst = false;
-                }
+                valueAcceptable = true;
+                token = getNextToken();  // consume ',' token;
             } else {
                 throw new IllegalStateException("Unexpected token: " + token);
             }
-
-            // Special case for empty arrays (like []), TODO: it might be better to rewrite this
-            TomlToken previousToken = getCurrentToken();
-            if (isFirst && previousToken != null && previousToken.getType() == TomlTokenType.BRACKET_END) {
-                break;
-            }
-
-            do {
-                token = getNextToken();
-                if (token == null) {
-                    return null;
-                }
-            } while (isSkippableToken(token));
         }
+
+        getNextToken();  // consume ']' token
 
         return array;
     }
@@ -271,33 +277,46 @@ public class TomlParser {
         BasicTomlTable table = new BasicTomlTable();
 
         boolean commaFound = false;
+        boolean valueAcceptable = true;
+
+        TomlToken token = getCurrentToken();
+        assert token.getType() == TomlTokenType.BRACE_START;
+
+        token = getNextToken();
 
         while (true) {
-            TomlToken token;
-            do {
+            while (isSkippableToken(token)) {
                 token = getNextToken();
                 if (token == null) {
                     return null;
                 }
-            } while (isSkippableToken(token));
+            }
 
             if (token.getType() == TomlTokenType.BRACE_END) {
-                if (commaFound) {
-                    throw new IllegalStateException("Trailing comma is forbidden here.");
-                }
-
                 break;
+            } else if (valueAcceptable) {
+                parseKeyValuePair(table);
+                commaFound = false;
+                valueAcceptable = false;
+                token = getCurrentToken();
             } else if (token.getType() == TomlTokenType.COMMA) {
                 if (commaFound) {
                     throw new IllegalStateException("Comma occurs several times in a row.");
                 }
 
                 commaFound = true;
+                valueAcceptable = true;
+                token = getNextToken();  // consume ',' token;
             } else {
-                parseKeyValuePair(table);
-                commaFound = false;
+                throw new IllegalStateException("Unexpected token: " + token);
             }
         }
+
+        if (commaFound) {
+            throw new IllegalStateException("Trailing comma is forbidden here.");
+        }
+
+        getNextToken();  // consume '}' token
 
         return table;
     }
