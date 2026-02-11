@@ -61,6 +61,8 @@ public class Assertions {
     }
 
     public static <T> T[] assertArrayValueEquals(ArrayValueAccessor accessor, T[] expected, Class<T> type) {
+        assertEquals(expected.length, accessor.getSize());
+
         @SuppressWarnings("unchecked") T[] result = (T[]) Array.newInstance(type, accessor.getSize());
         for (int i = 0; i < accessor.getSize(); i++) {
             result[i] = accessor.getAs(i, type);

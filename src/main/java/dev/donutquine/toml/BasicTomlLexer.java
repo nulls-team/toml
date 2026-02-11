@@ -111,7 +111,8 @@ public class BasicTomlLexer implements TomlLexer {
         } else if (current == COMMA) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.COMMA;
-            valueRequired = isArray || isInlineObject;
+            // Note: isInlineTable is not checked here, because a key required after comma and the value required there only after equals
+            valueRequired = isArray;
         } else if (current == PERIOD) {
             buffer.append((char) readChar());
             tokenType = TomlTokenType.PERIOD;

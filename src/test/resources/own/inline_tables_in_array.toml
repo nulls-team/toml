@@ -1,0 +1,5 @@
+dependencies = [
+    { type = "remote", url = "example.com" },
+    { type = "local", path = "./example/" },
+    { }
+]
