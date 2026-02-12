@@ -69,3 +69,4 @@ jobs:
         with:
           name: ${{ github.event.repository.name }}-${{ env.VERSION }}
           files: build/libs/*.jar
+          generate_release_notes: true
