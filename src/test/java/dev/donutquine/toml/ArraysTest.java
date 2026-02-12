@@ -17,9 +17,9 @@ public class ArraysTest {
 
         TomlArray matrix = toml.getRootTable().getArray("matrix");
         Integer[][] expectations = {
-                {1, 2, 3},
-                {4, 5, 6},
-                {7, 8, 9}
+            {1, 2, 3},
+            {4, 5, 6},
+            {7, 8, 9}
         };
         assertEquals(matrix.getSize(), expectations.length);
         for (int i = 0; i < matrix.getSize(); i++) {
