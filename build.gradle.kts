@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "dev.donutquine"
-version = System.getProperty("RELEASE_VERSION") ?: System.getenv("RELEASE_VERSION") ?: project.version
+version = System.getProperty("VERSION") ?: System.getenv("VERSION") ?: project.version
 
 repositories {
     mavenCentral()
