@@ -79,16 +79,19 @@ publishing {
 }
 
 signing {
-    useInMemoryPgpKeys(
-        findProperty("signing.key")?.toString(),
-        findProperty("signing.password")?.toString()
-    )
-    sign(publishing.publications["mavenJava"])
+    val signingKey: String? = findProperty("signing.key")?.toString() ?: System.getenv("GPG_PRIVATE_KEY")
+    val signingPassword: String? = findProperty("signing.password")?.toString() ?: System.getenv("GPG_PASSPHRASE")
+
+    isRequired = signingKey != null
+
+    if (signingKey != null) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign(publishing.publications["mavenJava"])
+    }
 }
 
 mavenCentral {
     val username = findProperty("sonatype.username")?.toString() ?: System.getenv("SONATYPE_USERNAME")
-
     val password = findProperty("sonatype.password")?.toString() ?: System.getenv("SONATYPE_PASSWORD")
 
     val credentials = "$username:$password"
