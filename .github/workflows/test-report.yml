@@ -1,0 +1,21 @@
+name: 'Test Report'
+on:
+  workflow_run:
+    workflows: ['Build with Gradle']
+    types:
+      - completed
+permissions:
+  contents: read
+  actions: read
+  checks: write
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Report test results
+      uses: dorny/test-reporter@v2
+      with:
+        name: Gradle Tests
+        artifact: junit-test-results
+        path: ./*.xml
+        reporter: java-junit

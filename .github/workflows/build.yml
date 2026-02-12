@@ -33,28 +33,19 @@ jobs:
       run: ./gradlew test --no-daemon
 
     - name: Publish test results
-      if: always()
+      if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
       with:
         name: junit-test-results
         path: build/test-results/test/
 
     - name: Upload HTML test report
-      if: always()
+      if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v4
       with:
         name: html-test-report
         path: build/reports/tests/test/
 
-    - name: Report test results
-      if: always()
-      uses: dorny/test-reporter@v1
-      with:
-        name: Gradle Tests
-        path: build/test-results/test/*.xml
-        reporter: java-junit
-
-    # Сборка без повторного запуска тестов
     - name: Build project
       run: ./gradlew build -x test --no-daemon
 
