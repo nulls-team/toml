@@ -31,9 +31,16 @@ tasks.test {
 java {
     withJavadocJar()
     withSourcesJar()
+    // It seems, deprecated
+    // targetCompatibility = JavaVersion.VERSION_11
+    // Requires java to be installed
     // toolchain {
     //     languageVersion = JavaLanguageVersion.of(11)
     // }
+}
+
+tasks.withType<JavaCompile> {
+    options.release = 11
 }
 
 publishing {
