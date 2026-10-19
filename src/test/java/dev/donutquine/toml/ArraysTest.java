@@ -13,7 +13,12 @@ public class ArraysTest {
         Toml toml = assertDoesNotThrow(parser::parse);
 
         assertTrue(toml.getRootTable().getArray("empty").isEmpty());
+
         assertArrayValueEquals(toml.getRootTable().getArray("numbers"), new Integer[]{1, 2, 3, 4, 5}, Integer.class);
+        assertArrayValueEquals(toml.getRootTable().getArray("strings"), new String[]{"one", "two", "three"}, String.class);
+
+        assertArrayEquals(new int[]{1, 2, 3, 4, 5}, toml.getRootTable().getArray("numbers").convertIntegers());
+        assertArrayEquals(new String[]{"one", "two", "three"}, toml.getRootTable().getArray("strings").convertStrings());
 
         TomlArray matrix = toml.getRootTable().getArray("matrix");
         Integer[][] expectations = {
