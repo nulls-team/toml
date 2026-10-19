@@ -21,10 +21,22 @@ public interface ArrayValueAccessor {
     TomlArray getArray(int index);
 
     TomlTable getTable(int index);
-    
+
     <T> T getAs(int index, Class<T> type);
 
     int getSize();
 
     boolean isEmpty();
+
+    String[] convertStrings();
+
+    int[] convertIntegers();
+
+    long[] convertLongs();
+
+    float[] convertFloats();
+
+    boolean[] convertBooleans();
+
+    void convertAs(Object array, Class<?> type);
 }

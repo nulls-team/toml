@@ -2,6 +2,8 @@ empty = []
 
 numbers = [1, 2, 3, 4, 5]
 
+strings = ["one", "two", "three"]
+
 matrix = [
     [1, 2, 3],
     [4, 5, 6],

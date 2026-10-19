@@ -2,6 +2,7 @@ package dev.donutquine.toml;
 
 import dev.donutquine.toml.util.StringEscaper;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -106,6 +107,49 @@ public class TomlArray implements ArrayValueAccessor, ArrayValueMutator {
     @Override
     public void addObject(Object value) {
         values.add(value);
+    }
+
+    @Override
+    public String[] convertStrings() {
+        String[] result = new String[this.getSize()];
+        convertAs(result, String.class);
+        return result;
+    }
+
+    @Override
+    public int[] convertIntegers() {
+        int[] result = new int[this.getSize()];
+        convertAs(result, Integer.class);
+        return result;
+    }
+
+    @Override
+    public long[] convertLongs() {
+        long[] result = new long[this.getSize()];
+        convertAs(result, Long.class);
+        return result;
+    }
+
+    @Override
+    public float[] convertFloats() {
+        float[] result = new float[this.getSize()];
+        convertAs(result, Float.class);
+        return result;
+    }
+
+    @Override
+    public boolean[] convertBooleans() {
+        boolean[] result = new boolean[this.getSize()];
+        convertAs(result, Boolean.class);
+        return result;
+    }
+
+    @Override
+    public void convertAs(Object array, Class<?> type) {
+        int limit = Math.min(Array.getLength(array), values.size());
+        for (int i = 0; i < limit; i++) {
+            Array.set(array, i, getAs(i, type));
+        }
     }
 
     @Override
