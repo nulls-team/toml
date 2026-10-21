@@ -4,6 +4,7 @@ package dev.donutquine.toml;
 import dev.donutquine.toml.util.ResourceLoader;
 import org.junit.jupiter.api.Test;
 
+import static dev.donutquine.toml.util.Assertions.assertArrayValueEquals;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class InlineTablesTest {
@@ -30,5 +31,16 @@ public class InlineTablesTest {
         TomlTable inlineTable2 = dependencies.getTable(2);
         assertTrue(inlineTable2.getKeys().isEmpty());
     }
-}
 
+    @Test
+    public void testArraysInInlineTable() {
+        TomlParser parser = new TomlParser(ResourceLoader.getStringResource("/own/arrays_in_inline_table.toml"));
+        Toml toml = assertDoesNotThrow(parser::parse);
+
+        TomlTable table = toml.getRootTable().getTable("table");
+        assertEquals(2, table.getKeys().size());
+
+        assertArrayValueEquals(table.getArray("first"), new Integer[]{1, 2, 3}, Integer.class);
+        assertArrayValueEquals(table.getArray("second"), new String[]{"meow", "oink"}, String.class);
+    }
+}
