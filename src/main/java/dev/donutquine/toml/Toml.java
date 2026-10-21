@@ -1,11 +1,11 @@
 package dev.donutquine.toml;
 
 public class Toml {
-    private final TomlTable rootTable = new BasicTomlTable();
+    private final TomlTable rootTable = new TomlTable();
 
     private TomlTable currentTable = rootTable;
 
-    public TomlTable findTableByPath(Iterable<String> tablePath) {
+    public TomlTable ensureTableByPath(Iterable<String> tablePath) {
         TomlTable table = rootTable;
         for (String key : tablePath) {
             TomlArray array = table.getArray(key);
@@ -13,7 +13,7 @@ public class Toml {
                 // Note: array size is 1 at least if array exists
                 table = array.getTable(array.getSize() - 1);
             } else {
-                table = table.computeIfAbsent(key, (k) -> new BasicTomlTable());
+                table = table.ensureTable(key);
             }
         }
 
