@@ -127,7 +127,7 @@ public class BasicTomlLexer implements TomlLexer {
             tokenType = TomlTokenType.BRACKET_START;
             // Note: it is table declaration if valueRequired is false, otherwise an array
             if (valueRequired) {
-                context.add(Context.Array);
+                context.push(Context.Array);
                 // Note: as we entered the array, valueRequired should be set to true, but it is true already
             }
         } else if (current == BRACKET_END) {
