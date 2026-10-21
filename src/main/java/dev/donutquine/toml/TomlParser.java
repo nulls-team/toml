@@ -56,7 +56,7 @@ public class TomlParser {
 
         TomlTable table = currentTable;
         for (String tableKey : keyPath) {
-            table = table.computeIfAbsent(tableKey, (k) -> new BasicTomlTable());
+            table = table.ensureTable(tableKey);
         }
 
         TomlToken equalsToken = getCurrentToken();
@@ -108,18 +108,12 @@ public class TomlParser {
 
             String arrayKey = keyPath.remove(keyPath.size() - 1);
 
-            TomlTable table = toml.findTableByPath(keyPath);
-
-            TomlArray array = table.computeIfAbsent(arrayKey, (k) -> new TomlArray());
-            if (array != null) {
-                table = new BasicTomlTable();
-                array.addTable(table);
-                toml.setCurrentTable(table);
-            } else {
-                throw new IllegalStateException("Array not found");
-            }
+            TomlArray array = toml.ensureTableByPath(keyPath).ensureArray(arrayKey);
+            TomlTable table = new TomlTable();
+            array.addTable(table);
+            toml.setCurrentTable(table);
         } else {
-            toml.setCurrentTable(toml.findTableByPath(keyPath));
+            toml.setCurrentTable(toml.ensureTableByPath(keyPath));
         }
     }
 
@@ -274,7 +268,7 @@ public class TomlParser {
     }
 
     private TomlTable parseInlineTable() {
-        BasicTomlTable table = new BasicTomlTable();
+        TomlTable table = new TomlTable();
 
         boolean commaFound = false;
         boolean valueAcceptable = true;
